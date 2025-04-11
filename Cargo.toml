@@ -6,7 +6,7 @@ description = "A royal collection of exquisite widgets and helpers to rule your 
 license = "MIT"
 
 [dependencies]
-iced_core = { git = "https://github.com/iced-rs/iced.git" }
+iced_core = "0.14.0-dev"
 rand = { version = "0.9", default-features = false, features = ["thread_rng"] }
 
 [workspace]
@@ -17,3 +17,6 @@ members = [
 [workspace.dependencies]
 iced = { git = "https://github.com/iced-rs/iced.git" }
 iced_palace = { path = "." }
+
+[patch.crates-io]
+iced_core.git = "https://github.com/iced-rs/iced.git"
