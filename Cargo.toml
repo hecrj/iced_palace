@@ -1,0 +1,19 @@
+[package]
+name = "iced_palace"
+version = "0.14.0-dev"
+edition = "2024"
+description = "A royal collection of exquisite widgets and helpers to rule your iced kingdom"
+license = "MIT"
+
+[dependencies]
+iced_core = { git = "https://github.com/iced-rs/iced.git" }
+rand = { version = "0.9", default-features = false, features = ["thread_rng"] }
+
+[workspace]
+members = [
+  "examples/*",
+]
+
+[workspace.dependencies]
+iced = { git = "https://github.com/iced-rs/iced.git" }
+iced_palace = { path = "." }
