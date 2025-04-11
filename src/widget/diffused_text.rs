@@ -49,7 +49,7 @@ where
             align_y: alignment::Vertical::Top,
             shaping: text::Shaping::Basic,
             class: Theme::default(),
-            duration: Duration::from_millis(500),
+            duration: Duration::from_millis(200),
             tick_rate: 50,
         }
     }
