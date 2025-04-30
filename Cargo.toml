@@ -16,6 +16,7 @@ iced_widget.optional = true
 
 rand.workspace = true
 rand.features = ["thread_rng"]
+rand.optional = true
 
 [workspace]
 members = [
