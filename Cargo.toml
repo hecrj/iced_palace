@@ -5,9 +5,17 @@ edition = "2024"
 description = "A royal collection of exquisite widgets and helpers to rule your iced kingdom"
 license = "MIT"
 
+[features]
+geometry = ["iced_widget/canvas"]
+
 [dependencies]
-iced_core = "0.14.0-dev"
-rand = { version = "0.9", default-features = false, features = ["thread_rng"] }
+iced_core.workspace = true
+
+iced_widget.version = "0.14.0-dev"
+iced_widget.optional = true
+
+rand.workspace = true
+rand.features = ["thread_rng"]
 
 [workspace]
 members = [
@@ -15,8 +23,19 @@ members = [
 ]
 
 [workspace.dependencies]
-iced = { git = "https://github.com/iced-rs/iced.git" }
+iced = "0.14.0-dev"
+iced_core = "0.14.0-dev"
 iced_palace = { path = "." }
 
+rand.version = "0.9"
+rand.default-features = false
+
 [patch.crates-io]
+iced.git = "https://github.com/iced-rs/iced.git"
+iced.branch = "feature/float-widget"
+
 iced_core.git = "https://github.com/iced-rs/iced.git"
+iced_core.branch = "feature/float-widget"
+
+iced_widget.git = "https://github.com/iced-rs/iced.git"
+iced_widget.branch = "feature/float-widget"
