@@ -3,9 +3,10 @@ use iced::{Center, Element, Font};
 use iced_palace::widget::dynamic_text;
 
 fn main() -> iced::Result {
-    iced::application(Example::new, Example::update, Example::view).run()
+    iced::run(Example::update, Example::view)
 }
 
+#[derive(Default)]
 struct Example {
     use_geometry: bool,
 }
@@ -16,12 +17,6 @@ enum Message {
 }
 
 impl Example {
-    fn new() -> Self {
-        Self {
-            use_geometry: false,
-        }
-    }
-
     fn update(&mut self, message: Message) {
         match message {
             Message::ToggleGeometry(use_geometry) => {
