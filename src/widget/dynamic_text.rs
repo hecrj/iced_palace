@@ -215,8 +215,7 @@ where
                 alignment::Vertical::Bottom => bounds.height,
             };
 
-            frame.rotate(0.000001);
-            frame.fill_text(canvas::Text {
+            canvas::Text {
                 content: self.fragment.clone().into_owned(),
                 position: Point::new(x_offset, y_offset),
                 max_width: bounds.width,
@@ -227,6 +226,9 @@ where
                 align_x: self.align_x,
                 align_y: self.align_y,
                 shaping: self.shaping,
+            }
+            .draw_with(|glyph, color| {
+                frame.fill(&glyph, color);
             });
         });
 
