@@ -11,7 +11,7 @@ geometry = ["iced_widget/canvas"]
 [dependencies]
 iced_core.workspace = true
 
-iced_widget.version = "0.14.0-dev"
+iced_widget.workspace = true
 iced_widget.optional = true
 
 rand.workspace = true
@@ -26,6 +26,7 @@ members = [
 [workspace.dependencies]
 iced = "0.14.0-dev"
 iced_core = "0.14.0-dev"
+iced_widget = "0.14.0-dev"
 iced_palace = { path = "." }
 
 rand.version = "0.9"
