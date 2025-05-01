@@ -34,10 +34,5 @@ rand.default-features = false
 
 [patch.crates-io]
 iced.git = "https://github.com/iced-rs/iced.git"
-iced.branch = "feature/float-widget"
-
 iced_core.git = "https://github.com/iced-rs/iced.git"
-iced_core.branch = "feature/float-widget"
-
 iced_widget.git = "https://github.com/iced-rs/iced.git"
-iced_widget.branch = "feature/float-widget"
