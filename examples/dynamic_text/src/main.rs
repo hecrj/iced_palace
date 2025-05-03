@@ -1,5 +1,5 @@
-use iced::widget::{center, column, toggler};
-use iced::{Center, Element, Font};
+use iced::widget::{center_x, column, container, row, toggler};
+use iced::{Element, Fill, Font};
 use iced_palace::widget::dynamic_text;
 
 fn main() -> iced::Result {
@@ -9,11 +9,13 @@ fn main() -> iced::Result {
 #[derive(Default)]
 struct Example {
     use_geometry: bool,
+    use_monospace: bool,
 }
 
 #[derive(Debug, Clone)]
 enum Message {
     ToggleGeometry(bool),
+    ToggleMonospace(bool),
 }
 
 impl Example {
@@ -21,6 +23,9 @@ impl Example {
         match message {
             Message::ToggleGeometry(use_geometry) => {
                 self.use_geometry = use_geometry;
+            }
+            Message::ToggleMonospace(use_monospace) => {
+                self.use_monospace = use_monospace;
             }
         }
     }
@@ -31,23 +36,31 @@ impl Example {
         I watched C-beams glitter in the dark near the Tannhäuser Gate.\n\
         All those moments will be lost in time, like tears in rain.";
 
-        let toggle = toggler(self.use_geometry)
-            .label("Use geometry")
+        let geometry_toggle = toggler(self.use_geometry)
+            .label("Geometry")
             .on_toggle(Message::ToggleGeometry);
 
-        center(
-            column![
-                dynamic_text(ROY)
-                    .font(Font::MONOSPACE)
-                    .center()
-                    .width(500)
-                    .line_height(1.5)
-                    .vectorial(self.use_geometry),
-                toggle
-            ]
-            .spacing(20)
-            .align_x(Center),
-        )
+        let monospace_toggle = toggler(self.use_monospace)
+            .label("Monospace")
+            .on_toggle(Message::ToggleMonospace);
+
+        column![
+            dynamic_text(ROY)
+                .font(if self.use_monospace {
+                    Font::MONOSPACE
+                } else {
+                    Font::DEFAULT
+                })
+                .width(Fill)
+                .height(Fill)
+                .center()
+                .line_height(1.5)
+                .vectorial(self.use_geometry),
+            center_x(row![geometry_toggle, monospace_toggle].spacing(30))
+                .padding(10)
+                .style(container::dark),
+        ]
+        .spacing(10)
         .into()
     }
 }

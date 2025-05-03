@@ -4,6 +4,7 @@ use crate::core::layout::{self, Layout};
 use crate::core::mouse;
 use crate::core::renderer;
 use crate::core::text;
+use crate::core::text::paragraph;
 use crate::core::widget;
 use crate::core::widget::tree::{self, Tree};
 use crate::core::{
@@ -35,7 +36,7 @@ where
 impl<'a, Theme, Renderer> DynamicText<'a, Theme, Renderer>
 where
     Theme: widget::text::Catalog,
-    Renderer: text::Renderer,
+    Renderer: text::Renderer + geometry::Renderer,
 {
     pub fn new(fragment: impl core::text::IntoFragment<'a>) -> Self {
         Self {
@@ -133,7 +134,7 @@ pub struct State<Renderer>
 where
     Renderer: text::Renderer + geometry::Renderer + 'static,
 {
-    internal: widget::text::State<Renderer::Paragraph>,
+    text: paragraph::Plain<Renderer::Paragraph>,
     geometry: canvas::Cache<Renderer>,
 }
 
@@ -148,7 +149,7 @@ where
 
     fn state(&self) -> tree::State {
         tree::State::new(State {
-            internal: widget::text::State::<Renderer::Paragraph>::default(),
+            text: paragraph::Plain::<Renderer::Paragraph>::default(),
             geometry: canvas::Cache::<Renderer>::new(),
         })
     }
@@ -168,21 +169,30 @@ where
     ) -> layout::Node {
         let state = &mut tree.state.downcast_mut::<State<Renderer>>();
 
-        widget::text::layout(
-            &mut state.internal,
-            renderer,
-            limits,
-            self.width,
-            self.height,
-            &self.fragment,
-            self.line_height,
-            self.size,
-            self.font,
-            self.align_x,
-            self.align_y,
-            self.shaping,
-            text::Wrapping::default(),
-        )
+        layout::sized(limits, self.width, self.height, |limits| {
+            let bounds = limits.max();
+
+            let size = self.size.unwrap_or_else(|| renderer.default_size());
+            let font = self.font.unwrap_or_else(|| renderer.default_font());
+
+            let changed = state.text.update(text::Text {
+                content: &self.fragment,
+                bounds,
+                size,
+                line_height: self.line_height,
+                font,
+                align_x: self.align_x,
+                align_y: self.align_y,
+                shaping: self.shaping,
+                wrapping: text::Wrapping::default(),
+            });
+
+            if changed {
+                state.geometry.clear();
+            }
+
+            state.text.min_bounds()
+        })
     }
 
     fn draw(
@@ -198,27 +208,30 @@ where
         let state = tree.state.downcast_ref::<State<Renderer>>();
         let style = theme.style(&self.class);
 
-        let bounds = layout.bounds();
-
-        let geometry = state.geometry.draw(renderer, bounds.size(), |frame| {
-            let x_offset = match self.align_x {
+        let text_bounds = state.text.min_bounds();
+        let text_position = {
+            let x = match self.align_x {
                 text::Alignment::Default | text::Alignment::Left | text::Alignment::Justified => {
                     0.0
                 }
-                text::Alignment::Center => bounds.width / 2.0,
-                text::Alignment::Right => bounds.width,
+                text::Alignment::Center => text_bounds.width / 2.0,
+                text::Alignment::Right => text_bounds.width,
             };
 
-            let y_offset = match self.align_y {
+            let y = match self.align_y {
                 alignment::Vertical::Top => 0.0,
-                alignment::Vertical::Center => bounds.height / 2.0,
-                alignment::Vertical::Bottom => bounds.height,
+                alignment::Vertical::Center => text_bounds.height / 2.0,
+                alignment::Vertical::Bottom => text_bounds.height,
             };
 
+            Point::new(x, y)
+        };
+
+        let geometry = state.geometry.draw(renderer, text_bounds, |frame| {
             canvas::Text {
                 content: self.fragment.clone().into_owned(),
-                position: Point::new(x_offset, y_offset),
-                max_width: bounds.width,
+                position: text_position,
+                max_width: text_bounds.width,
                 color: style.color.unwrap_or(defaults.text_color),
                 size: self.size.unwrap_or(renderer.default_size()),
                 line_height: self.line_height,
@@ -232,18 +245,20 @@ where
             });
         });
 
+        let position = widget::text::anchor(layout.bounds(), self.align_x, self.align_y);
+
         if self.vectorial {
-            renderer.with_translation(bounds.position() - Point::ORIGIN, |renderer| {
+            renderer.with_translation(position - text_position, |renderer| {
                 renderer.draw_geometry(geometry);
             });
         } else {
-            widget::text::draw(
-                renderer,
-                defaults,
-                layout,
-                state.internal.0.raw(),
-                style,
-                viewport,
+            let style = theme.style(&self.class);
+
+            renderer.fill_paragraph(
+                state.text.raw(),
+                position,
+                style.color.unwrap_or(defaults.text_color),
+                *viewport,
             );
         }
     }

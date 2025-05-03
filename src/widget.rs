@@ -27,7 +27,7 @@ pub fn dynamic_text<'a, Theme, Renderer>(
 ) -> DynamicText<'a, Theme, Renderer>
 where
     Theme: crate::core::widget::text::Catalog,
-    Renderer: crate::core::text::Renderer,
+    Renderer: crate::core::text::Renderer + iced_widget::graphics::geometry::Renderer,
 {
     DynamicText::new(fragment)
 }

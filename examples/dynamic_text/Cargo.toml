@@ -5,6 +5,7 @@ edition = "2024"
 
 [dependencies]
 iced.workspace = true 
+iced.features = ["debug"]
 
 iced_palace.workspace = true
 iced_palace.features = ["geometry"]
