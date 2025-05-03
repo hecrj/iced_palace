@@ -1,9 +1,12 @@
+use iced::keyboard;
 use iced::widget::{center_x, column, container, row, toggler};
-use iced::{Element, Fill, Font};
+use iced::{Element, Fill, Font, Subscription};
 use iced_palace::widget::dynamic_text;
 
 fn main() -> iced::Result {
-    iced::run(Example::update, Example::view)
+    iced::application(Example::default, Example::update, Example::view)
+        .subscription(Example::subscription)
+        .run()
 }
 
 #[derive(Default)]
@@ -62,5 +65,14 @@ impl Example {
         ]
         .spacing(10)
         .into()
+    }
+
+    fn subscription(&self) -> Subscription<Message> {
+        keyboard::on_key_press(|key, _modifiers| match key {
+            keyboard::Key::Named(keyboard::key::Named::Space) => Some(Message::ToggleGeometry),
+            _ => None,
+        })
+        .with(self.use_geometry)
+        .map(|(use_geometry, f)| f(!use_geometry))
     }
 }
