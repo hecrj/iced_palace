@@ -8,7 +8,7 @@ use crate::core::text::paragraph;
 use crate::core::widget;
 use crate::core::widget::tree::{self, Tree};
 use crate::core::{
-    Alignment, Color, Element, Font, Length, Pixels, Point, Rectangle, Size, Vector, Widget,
+    Alignment, Color, Element, Font, Length, Pixels, Point, Rectangle, Size, Widget,
 };
 
 use iced_widget::canvas;
@@ -248,14 +248,9 @@ where
         let position = widget::text::anchor(layout.bounds(), self.align_x, self.align_y);
 
         if self.vectorial {
-            let translation = position - text_position;
-
-            renderer.with_translation(
-                Vector::new(translation.x, translation.y.trunc()),
-                |renderer| {
-                    renderer.draw_geometry(geometry);
-                },
-            );
+            renderer.with_translation(position - text_position, |renderer| {
+                renderer.draw_geometry(geometry);
+            });
         } else {
             let style = theme.style(&self.class);
 
