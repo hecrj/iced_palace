@@ -224,10 +224,8 @@ where
             Animation::Done => state.text.raw(),
         };
 
-        let width_difference = state.text.min_bounds().width - paragraph.min_bounds().width;
-
         let position = layout.bounds().anchor(
-            state.text.min_bounds() - Size::new(width_difference, 0.0),
+            Size::new(paragraph.min_width(), state.text.min_height()),
             self.format.align_x,
             self.format.align_y,
         );
