@@ -245,10 +245,12 @@ where
             });
         });
 
-        let position = widget::text::anchor(layout.bounds(), self.align_x, self.align_y);
+        let position = layout
+            .bounds()
+            .anchor(state.text.min_bounds(), self.align_x, self.align_y);
 
         if self.vectorial {
-            renderer.with_translation(position - text_position, |renderer| {
+            renderer.with_translation(position - Point::ORIGIN, |renderer| {
                 renderer.draw_geometry(geometry);
             });
         } else {

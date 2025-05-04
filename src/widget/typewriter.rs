@@ -3,10 +3,10 @@ use crate::core::alignment;
 use crate::core::layout::{self, Layout};
 use crate::core::mouse;
 use crate::core::renderer;
-use crate::core::text;
+use crate::core::text::{self, Fragment, Paragraph, Text};
 use crate::core::time::{Duration, Instant, milliseconds};
 use crate::core::widget;
-use crate::core::widget::text::{Catalog, Format, Style, StyleFn};
+use crate::core::widget::text::Format;
 use crate::core::widget::tree::{self, Tree};
 use crate::core::window;
 use crate::core::{
@@ -14,21 +14,20 @@ use crate::core::{
 };
 
 #[derive(Debug)]
-pub struct DiffusedText<'a, Theme, Renderer>
+pub struct Typewriter<'a, Theme, Renderer>
 where
-    Theme: Catalog,
+    Theme: widget::text::Catalog,
     Renderer: text::Renderer,
 {
-    fragment: core::text::Fragment<'a>,
+    fragment: Fragment<'a>,
     format: Format<Renderer::Font>,
     class: Theme::Class<'a>,
-    duration: Duration,
-    tick_rate: u64,
+    speed: Duration,
 }
 
-impl<'a, Theme, Renderer> DiffusedText<'a, Theme, Renderer>
+impl<'a, Theme, Renderer> Typewriter<'a, Theme, Renderer>
 where
-    Theme: Catalog,
+    Theme: widget::text::Catalog,
     Renderer: text::Renderer,
 {
     pub fn new(fragment: impl core::text::IntoFragment<'a>) -> Self {
@@ -36,8 +35,7 @@ where
             fragment: fragment.into_fragment(),
             format: Format::default(),
             class: Theme::default(),
-            duration: Duration::from_millis(200),
-            tick_rate: 50,
+            speed: Duration::from_millis(20),
         }
     }
 
@@ -85,81 +83,74 @@ where
         self
     }
 
+    pub fn wrapping(mut self, wrapping: text::Wrapping) -> Self {
+        self.format.wrapping = wrapping;
+        self
+    }
+
     #[must_use]
-    pub fn style(mut self, style: impl Fn(&Theme) -> Style + 'a) -> Self
+    pub fn style(mut self, style: impl Fn(&Theme) -> widget::text::Style + 'a) -> Self
     where
-        Theme::Class<'a>: From<StyleFn<'a, Theme>>,
+        Theme::Class<'a>: From<widget::text::StyleFn<'a, Theme>>,
     {
-        self.class = (Box::new(style) as StyleFn<'a, Theme>).into();
+        self.class = (Box::new(style) as widget::text::StyleFn<'a, Theme>).into();
         self
     }
 
     pub fn color(self, color: impl Into<Color>) -> Self
     where
-        Theme::Class<'a>: From<StyleFn<'a, Theme>>,
+        Theme::Class<'a>: From<widget::text::StyleFn<'a, Theme>>,
     {
         self.color_maybe(Some(color))
     }
 
     pub fn color_maybe(self, color: Option<impl Into<Color>>) -> Self
     where
-        Theme::Class<'a>: From<StyleFn<'a, Theme>>,
+        Theme::Class<'a>: From<widget::text::StyleFn<'a, Theme>>,
     {
         let color = color.map(Into::into);
 
-        self.style(move |_theme| Style { color })
+        self.style(move |_theme| widget::text::Style { color })
     }
 
     pub fn very_quick(self) -> Self {
-        self.duration(milliseconds(100))
+        self.speed(milliseconds(10))
     }
 
     pub fn quick(self) -> Self {
-        self.duration(milliseconds(200))
+        self.speed(milliseconds(20))
     }
 
     pub fn slow(self) -> Self {
-        self.duration(milliseconds(400))
+        self.speed(milliseconds(40))
     }
 
     pub fn very_slow(self) -> Self {
-        self.duration(milliseconds(500))
+        self.speed(milliseconds(80))
     }
 
-    pub fn duration(mut self, duration: impl Into<Duration>) -> Self {
-        self.duration = duration.into();
-        self
-    }
-
-    pub fn tick_rate(mut self, tick_rate: impl Into<Duration>) -> Self {
-        self.tick_rate = tick_rate.into().as_millis() as u64;
+    pub fn speed(mut self, char_rate: impl Into<Duration>) -> Self {
+        self.speed = char_rate.into();
         self
     }
 }
 
 /// The internal state of a [`Text`] widget.
-#[derive(Debug)]
 pub struct State<P: text::Paragraph> {
-    content: String,
-    internal: widget::text::State<P>,
-    animation: Animation,
+    text: text::paragraph::Plain<P>,
+    animation: Animation<P>,
 }
 
-#[derive(Debug)]
-enum Animation {
-    Ticking {
-        fragment: String,
-        ticks: u64,
-        next_redraw: Instant,
-    },
+enum Animation<P: text::Paragraph> {
+    Ticking { text: P, start: Option<Instant> },
     Done,
 }
 
-impl<Message, Theme, Renderer> Widget<Message, Theme, Renderer>
-    for DiffusedText<'_, Theme, Renderer>
+impl<Message, Theme, Renderer> Widget<Message, Theme, Renderer> for Typewriter<'_, Theme, Renderer>
 where
     Theme: widget::text::Catalog,
     Renderer: text::Renderer,
+    Renderer::Paragraph: Clone,
 {
     fn tag(&self) -> tree::Tag {
         tree::Tag::of::<State<Renderer::Paragraph>>()
@@ -167,12 +158,10 @@ where
 
     fn state(&self) -> tree::State {
         tree::State::new(State {
-            content: String::new(),
-            internal: widget::text::State::<Renderer::Paragraph>::default(),
+            text: text::paragraph::Plain::<Renderer::Paragraph>::default(),
             animation: Animation::Ticking {
-                fragment: String::new(),
-                ticks: 0,
-                next_redraw: Instant::now(),
+                text: Renderer::Paragraph::default(),
+                start: None,
             },
         })
     }
@@ -192,22 +181,29 @@ where
     ) -> layout::Node {
         let state = &mut tree.state.downcast_mut::<State<Renderer::Paragraph>>();
 
-        if state.content != self.fragment {
-            state.content = self.fragment.clone().into_owned();
+        let has_changed = state.text.content() != self.fragment;
+
+        let node = widget::text::layout(
+            &mut state.text,
+            renderer,
+            limits,
+            &self.fragment,
+            self.format,
+        );
+
+        if has_changed {
+            let text = Text {
+                content: "",
+                ..state.text.as_text()
+            };
 
             state.animation = Animation::Ticking {
-                fragment: String::from("-"),
-                ticks: 0,
-                next_redraw: Instant::now(),
+                text: Renderer::Paragraph::with_text(text),
+                start: None,
             };
         }
 
-        let fragment = match &state.animation {
-            Animation::Ticking { fragment, .. } => fragment,
-            Animation::Done => self.fragment.as_ref(),
-        };
-
-        widget::text::layout(&mut state.internal, renderer, limits, fragment, self.format)
+        node
     }
 
     fn draw(
@@ -223,13 +219,24 @@ where
         let state = tree.state.downcast_ref::<State<Renderer::Paragraph>>();
         let style = theme.style(&self.class);
 
-        widget::text::draw(
-            renderer,
-            defaults,
-            layout.bounds(),
-            state.internal.raw(),
-            style,
-            viewport,
+        let paragraph = match &state.animation {
+            Animation::Ticking { text, .. } => text,
+            Animation::Done => state.text.raw(),
+        };
+
+        let width_difference = state.text.min_bounds().width - paragraph.min_bounds().width;
+
+        let position = layout.bounds().anchor(
+            state.text.min_bounds() - Size::new(width_difference, 0.0),
+            self.format.align_x,
+            self.format.align_y,
+        );
+
+        renderer.fill_paragraph(
+            paragraph,
+            position,
+            style.color.unwrap_or(defaults.text_color),
+            *viewport,
         );
     }
 
@@ -244,8 +251,6 @@ where
         shell: &mut Shell<'_, Message>,
         viewport: &Rectangle,
     ) {
-        use rand::Rng;
-
         if layout.bounds().intersection(viewport).is_none() {
             return;
         }
@@ -254,46 +259,32 @@ where
             let state = tree.state.downcast_mut::<State<Renderer::Paragraph>>();
 
             match &mut state.animation {
-                Animation::Ticking {
-                    fragment,
-                    next_redraw,
-                    ticks,
-                } => {
-                    if *next_redraw <= *now {
-                        *ticks += 1;
-
-                        let mut rng = rand::rng();
-                        let progress = (self.fragment.len() as f32
-                            / self.duration.as_millis() as f32
-                            * (*ticks * self.tick_rate) as f32)
-                            as usize;
-
-                        if progress >= self.fragment.len() {
-                            state.animation = Animation::Done;
-                            shell.invalidate_layout();
-
-                            return;
+                Animation::Ticking { text, start } => {
+                    let start = match start {
+                        Some(start) => *start,
+                        None => {
+                            *start = Some(*now);
+                            *now
                         }
+                    };
 
-                        *fragment = self
-                            .fragment
-                            .chars()
-                            .take(progress)
-                            .chain(self.fragment.chars().skip(progress).map(|c| {
-                                if c.is_whitespace() || c == '-' {
-                                    c
-                                } else {
-                                    rng.random_range('a'..='z')
-                                }
-                            }))
-                            .collect::<String>();
+                    let tick_rate = self.speed.as_millis() as f32;
+                    let tick = ((*now - start).as_millis() as f32 / tick_rate) as usize;
 
-                        *next_redraw = *now + Duration::from_millis(self.tick_rate);
+                    let total_chars = self.fragment.chars().count();
 
-                        shell.invalidate_layout();
+                    if tick >= total_chars {
+                        state.animation = Animation::Done;
+                    } else {
+                        let truncated: String = self.fragment.chars().take(tick).collect();
+
+                        *text = Renderer::Paragraph::with_text(Text {
+                            content: truncated.trim(),
+                            ..state.text.as_text()
+                        });
+
+                        shell.request_redraw_at(*now + Duration::from_millis(tick_rate as u64));
                     }
-
-                    shell.request_redraw_at(*next_redraw);
                 }
                 Animation::Done => {}
             }
@@ -301,13 +292,14 @@ where
     }
 }
 
-impl<'a, Message, Theme, Renderer> From<DiffusedText<'a, Theme, Renderer>>
+impl<'a, Message, Theme, Renderer> From<Typewriter<'a, Theme, Renderer>>
     for Element<'a, Message, Theme, Renderer>
 where
     Theme: widget::text::Catalog + 'a,
     Renderer: text::Renderer + 'a,
+    Renderer::Paragraph: Clone,
 {
-    fn from(text: DiffusedText<'a, Theme, Renderer>) -> Element<'a, Message, Theme, Renderer> {
+    fn from(text: Typewriter<'a, Theme, Renderer>) -> Element<'a, Message, Theme, Renderer> {
         Element::new(text)
     }
 }

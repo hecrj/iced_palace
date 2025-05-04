@@ -37,7 +37,8 @@ impl Example {
         const ROY: &str = "I've seen things you people wouldn't believe.\n\
         Attack ships on fire off the shoulder of Orion.\n\
         I watched C-beams glitter in the dark near the Tannhäuser Gate.\n\
-        All those moments will be lost in time, like tears in rain.";
+        All those moments will be lost in time, like tears in rain.\n\
+        — Roy Batty, Blade Runner";
 
         let geometry_toggle = toggler(self.use_geometry)
             .label("Geometry")

@@ -36,3 +36,8 @@ rand.default-features = false
 iced.git = "https://github.com/iced-rs/iced.git"
 iced_core.git = "https://github.com/iced-rs/iced.git"
 iced_widget.git = "https://github.com/iced-rs/iced.git"
+
+# For testing new bleeding edge iced features
+# iced.path = "../../iced"
+# iced_core.path = "../../iced/core"
+# iced_widget.path = "../../iced/widget"
