@@ -1,0 +1,17 @@
+[package]
+name = "iced_palace_macros"
+description = "A royal collection of exquisite macros to rule your iced kingdom"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
+categories.workspace = true
+keywords.workspace = true
+
+[lib]
+proc-macro = true
+
+[dependencies]
+quote.workspace = true
+syn.workspace = true
