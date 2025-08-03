@@ -1,3 +1,4 @@
+mod ellipsized_text;
 mod typewriter;
 
 #[cfg(feature = "rand")]
@@ -6,6 +7,7 @@ mod diffused_text;
 #[cfg(feature = "geometry")]
 mod dynamic_text;
 
+pub use ellipsized_text::EllipsizedText;
 pub use typewriter::Typewriter;
 
 #[cfg(feature = "rand")]
@@ -24,6 +26,16 @@ where
     Renderer: core::text::Renderer,
 {
     Typewriter::new(fragment)
+}
+
+pub fn ellipsized_text<'a, Theme, Renderer>(
+    fragment: impl core::text::IntoFragment<'a>,
+) -> EllipsizedText<'a, Theme, Renderer>
+where
+    Theme: core::widget::text::Catalog,
+    Renderer: core::text::Renderer,
+{
+    EllipsizedText::new(fragment)
 }
 
 #[cfg(feature = "rand")]
