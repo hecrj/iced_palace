@@ -58,6 +58,7 @@ impl Example {
                 .width(Fill)
                 .height(Fill)
                 .center()
+                .size(26)
                 .line_height(1.5)
                 .vectorial(self.use_geometry),
             center_x(row![geometry_toggle, monospace_toggle].spacing(30))
