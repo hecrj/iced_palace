@@ -30,7 +30,7 @@ impl Example {
         }
     }
 
-    fn view(&self) -> Element<Message> {
+    fn view(&self) -> Element<'_, Message> {
         const JOI: &str = "Mere data makes a man.\n\
         A and C and T and G.\n\
         The alphabet of you.\n\

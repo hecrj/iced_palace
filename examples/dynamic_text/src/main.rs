@@ -33,7 +33,7 @@ impl Example {
         }
     }
 
-    fn view(&self) -> Element<Message> {
+    fn view(&self) -> Element<'_, Message> {
         const ROY: &str = "I've seen things you people wouldn't believe.\n\
         Attack ships on fire off the shoulder of Orion.\n\
         I watched C-beams glitter in the dark near the Tannhäuser Gate.\n\
