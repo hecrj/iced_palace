@@ -46,7 +46,7 @@ impl Example {
             people share the same vices does not make these vices virtues, the fact \
             that they share so many errors does not make the errors to be truths, and \
             the fact that millions of people share the same forms of mental pathology \
-            does not make these people sane.";
+            does not make these people sane. — Erich Fromm, The Sane Society";
 
         let monospace_toggle = row![
             toggler(self.use_monospace)
