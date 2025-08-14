@@ -7,6 +7,9 @@ mod diffused_text;
 #[cfg(feature = "geometry")]
 mod dynamic_text;
 
+#[cfg(feature = "geometry")]
+pub mod node_editor;
+
 pub use ellipsized_text::EllipsizedText;
 pub use typewriter::Typewriter;
 
@@ -15,6 +18,9 @@ pub use diffused_text::DiffusedText;
 
 #[cfg(feature = "geometry")]
 pub use dynamic_text::DynamicText;
+
+#[cfg(feature = "geometry")]
+pub use node_editor::{NodeEditor, node_editor};
 
 use crate::core;
 

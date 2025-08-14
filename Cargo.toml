@@ -50,6 +50,7 @@ iced = "0.14.0-dev"
 iced_core = "0.14.0-dev"
 iced_widget = "0.14.0-dev"
 
+function = "0.2"
 quote = "1"
 syn = "2"
 
