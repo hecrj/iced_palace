@@ -1003,7 +1003,7 @@ impl<T> Graph<T> {
         self.nodes.get(&node).map(|node| &node.state)
     }
 
-    pub fn update<O>(&mut self, node: Node, f: impl FnOnce(&mut T) -> O) -> O
+    pub fn update<O>(&mut self, node: Node, f: impl FnOnce(&mut T, Data<'_>) -> O) -> O
     where
         O: Default,
     {
@@ -1012,7 +1012,12 @@ impl<T> Graph<T> {
                 return O::default();
             };
 
-            f(&mut node.state)
+            let data = Data {
+                links: &self.links,
+                values: &mut self.values,
+            };
+
+            f(&mut node.state, data)
         };
 
         self.invalidate(node);
@@ -1063,6 +1068,35 @@ impl<T> Graph<T> {
         if let Some(node) = self.nodes.get_mut(&node) {
             node.position = position.into();
         }
+    }
+
+    pub fn dependencies(&mut self, node: Node) -> Vec<Node> {
+        let mut dependencies = Vec::new();
+        let mut pending = VecDeque::new();
+        let mut visited = HashSet::new();
+
+        pending.push_back(node);
+
+        while let Some(node) = pending.pop_front() {
+            let Some(current) = self.nodes.get(&node) else {
+                continue;
+            };
+
+            for input in &current.inputs {
+                let Some(output) = self.links.get(input) else {
+                    continue;
+                };
+
+                if !visited.contains(&output.node) && !pending.contains(&output.node) {
+                    dependencies.push(output.node);
+                    pending.push_back(output.node);
+                }
+            }
+
+            visited.insert(node);
+        }
+
+        dependencies
     }
 
     fn evaluate(&mut self, node: Node) {

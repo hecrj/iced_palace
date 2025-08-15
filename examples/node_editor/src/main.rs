@@ -73,7 +73,7 @@ impl Example {
     fn update(&mut self, message: Message) {
         match message {
             Message::NumberChanged(node, input) => {
-                self.graph.update(node, |instruction| {
+                self.graph.update(node, |instruction, _| {
                     let Instruction::Number { n, .. } = instruction else {
                         return;
                     };
