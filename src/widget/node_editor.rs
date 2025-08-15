@@ -18,6 +18,7 @@ use std::collections::HashMap;
 use std::collections::HashSet;
 use std::collections::VecDeque;
 use std::marker::PhantomData;
+use std::rc::Rc;
 use std::sync::mpsc;
 
 pub fn node_editor<'a, T, Message, Theme, Renderer>(
@@ -819,14 +820,20 @@ pub struct Output<T> {
     _type: PhantomData<T>,
 }
 
-pub struct Value(Option<Box<dyn Any>>);
+pub struct Value(Option<Rc<dyn Any>>);
 
 impl Value {
     fn new<T>(f: impl FnOnce() -> Option<T>) -> Self
     where
         T: 'static,
     {
-        Self(f().map(|v| Box::new(v) as _))
+        Self(f().map(|v| Rc::new(v) as _))
+    }
+}
+
+impl Clone for Value {
+    fn clone(&self) -> Self {
+        Self(self.0.clone())
     }
 }
 
@@ -842,6 +849,27 @@ where
     sender: mpsc::Sender<Notification>,
     receiver: mpsc::Receiver<Notification>,
     interaction: Cell<Interaction>,
+}
+
+impl<T, Renderer> Clone for Graph<T, Renderer>
+where
+    T: Clone,
+    Renderer: geometry::Renderer,
+{
+    fn clone(&self) -> Self {
+        let (sender, receiver) = mpsc::channel();
+
+        Self {
+            nodes: self.nodes.clone(),
+            links: self.links.clone(),
+            values: self.values.clone(),
+            current: self.current,
+            evaluate: self.evaluate,
+            sender,
+            receiver,
+            interaction: Cell::new(Interaction::None),
+        }
+    }
 }
 
 pub struct Data<'a> {
@@ -902,6 +930,22 @@ where
     inputs: Vec<InputId>,
     outputs: Vec<OutputId>,
     links: canvas::Cache<Renderer>,
+}
+
+impl<T, Renderer> Clone for State<T, Renderer>
+where
+    T: Clone,
+    Renderer: geometry::Renderer,
+{
+    fn clone(&self) -> Self {
+        Self {
+            state: self.state.clone(),
+            position: self.position,
+            inputs: self.inputs.clone(),
+            outputs: self.outputs.clone(),
+            links: canvas::Cache::new(),
+        }
+    }
 }
 
 impl<T> Graph<T> {
