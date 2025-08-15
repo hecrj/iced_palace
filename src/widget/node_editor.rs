@@ -808,17 +808,33 @@ where
     }
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug)]
 pub struct Input<T> {
     id: InputId,
     _type: PhantomData<T>,
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug)]
 pub struct Output<T> {
     id: OutputId,
     _type: PhantomData<T>,
 }
+
+impl<T> Copy for Input<T> {}
+
+impl<T> Clone for Input<T> {
+    fn clone(&self) -> Self {
+        *self
+    }
+}
+
+impl<T> Clone for Output<T> {
+    fn clone(&self) -> Self {
+        *self
+    }
+}
+
+impl<T> Copy for Output<T> {}
 
 pub struct Value(Option<Rc<dyn Any>>);
 
@@ -968,16 +984,21 @@ impl<T> Graph<T> {
         self.nodes.get(&node).map(|node| &node.state)
     }
 
-    pub fn update(&mut self, node: Node, f: impl Fn(&mut T)) {
-        {
+    pub fn update<O>(&mut self, node: Node, f: impl FnOnce(&mut T) -> O) -> O
+    where
+        O: Default,
+    {
+        let result = {
             let Some(node) = self.nodes.get_mut(&node) else {
-                return;
+                return O::default();
             };
 
-            f(&mut node.state);
-        }
+            f(&mut node.state)
+        };
 
         self.invalidate(node);
+
+        result
     }
 
     pub fn input<A>(&self, input: &Input<A>) -> Option<&A>
