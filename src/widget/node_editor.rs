@@ -2,6 +2,7 @@ use crate::core;
 use crate::core::border;
 use crate::core::layout::{self, Layout};
 use crate::core::mouse;
+use crate::core::overlay;
 use crate::core::renderer;
 use crate::core::widget::tree::{self, Tree};
 use crate::core::window;
@@ -793,6 +794,24 @@ where
             Interaction::None => mouse::Interaction::None,
             Interaction::Connecting(_) => mouse::Interaction::Crosshair,
         }
+    }
+
+    fn overlay<'b>(
+        &'b mut self,
+        tree: &'b mut Tree,
+        layout: Layout<'b>,
+        renderer: &Renderer,
+        viewport: &Rectangle,
+        translation: Vector,
+    ) -> Option<overlay::Element<'b, Message, Theme, Renderer>> {
+        overlay::from_children(
+            &mut self.nodes,
+            tree,
+            layout,
+            renderer,
+            viewport,
+            translation,
+        )
     }
 }
 
