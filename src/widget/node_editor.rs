@@ -967,6 +967,15 @@ where
     links: canvas::Cache<Renderer>,
 }
 
+impl<T, Renderer> State<T, Renderer>
+where
+    Renderer: geometry::Renderer,
+{
+    pub fn is_root(&self, links: &HashMap<InputId, OutputId>) -> bool {
+        self.inputs.iter().all(|input| !links.contains_key(input))
+    }
+}
+
 impl<T, Renderer> Clone for State<T, Renderer>
 where
     T: Clone,
@@ -1070,15 +1079,14 @@ impl<T> Graph<T> {
         }
     }
 
-    pub fn dependencies(&mut self, node: Node) -> Vec<Node> {
-        let mut dependencies = Vec::new();
+    pub fn dependencies(&mut self, node: Node) -> HashSet<Node> {
+        let mut dependencies = HashSet::new();
         let mut pending = VecDeque::new();
-        let mut visited = HashSet::new();
 
         pending.push_back(node);
 
-        while let Some(node) = pending.pop_front() {
-            let Some(current) = self.nodes.get(&node) else {
+        while let Some(current) = pending.pop_front() {
+            let Some(current) = self.nodes.get(&current) else {
                 continue;
             };
 
@@ -1087,16 +1095,61 @@ impl<T> Graph<T> {
                     continue;
                 };
 
-                if !visited.contains(&output.node) && !pending.contains(&output.node) {
-                    dependencies.push(output.node);
+                if !dependencies.contains(&output.node) && !pending.contains(&output.node) {
+                    dependencies.insert(output.node);
                     pending.push_back(output.node);
                 }
             }
-
-            visited.insert(node);
         }
 
         dependencies
+    }
+
+    pub fn schedule(&mut self, node: Node) -> Vec<Node> {
+        let mut schedule = Vec::new();
+        let mut links = self.links.clone();
+
+        let dependencies = self.dependencies(node);
+        let mut pending: Vec<_> = dependencies
+            .iter()
+            .filter_map(|dependency| {
+                self.nodes
+                    .get(dependency)?
+                    .is_root(&links)
+                    .then_some(dependency)
+            })
+            .collect();
+
+        while let Some(current) = pending.pop() {
+            let Some(current_node) = self.nodes.get(current) else {
+                continue;
+            };
+
+            schedule.push(*current);
+
+            for candidate in &dependencies {
+                let Some(candidate_node) = self.nodes.get(candidate) else {
+                    continue;
+                };
+
+                let connection = candidate_node.inputs.iter().find(|input| {
+                    links
+                        .get(input)
+                        .is_some_and(|output| current_node.outputs.contains(output))
+                });
+
+                if let Some(connection) = connection {
+                    let _ = links.remove(connection);
+
+                    if candidate_node.is_root(&links) {
+                        pending.push(candidate);
+                    }
+                }
+            }
+        }
+
+        schedule.push(node);
+        schedule
     }
 
     fn evaluate(&mut self, node: Node) {
