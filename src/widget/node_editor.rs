@@ -1079,7 +1079,7 @@ impl<T> Graph<T> {
         }
     }
 
-    pub fn dependencies(&mut self, node: Node) -> HashSet<Node> {
+    pub fn dependencies(&self, node: Node) -> HashSet<Node> {
         let mut dependencies = HashSet::new();
         let mut pending = VecDeque::new();
 
@@ -1105,7 +1105,7 @@ impl<T> Graph<T> {
         dependencies
     }
 
-    pub fn schedule(&mut self, node: Node) -> Vec<Node> {
+    pub fn schedule(&self, node: Node) -> Vec<Node> {
         let mut schedule = Vec::new();
         let mut links = self.links.clone();
 
