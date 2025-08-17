@@ -7,7 +7,8 @@ use crate::core::renderer;
 use crate::core::widget::tree::{self, Tree};
 use crate::core::window;
 use crate::core::{
-    Clipboard, Color, Element, Event, Length, Point, Rectangle, Shell, Size, Vector, Widget,
+    Clipboard, Color, Element, Event, Length, Point, Rectangle, Shell, Size, Transformation,
+    Vector, Widget,
 };
 
 use iced_widget::canvas;
@@ -379,7 +380,7 @@ impl<'a> Connector<'a> {
                 let bounds = layout.bounds();
 
                 let (color, bounds) = match self.interaction.get() {
-                    Interaction::None => (
+                    Interaction::None | Interaction::Panning { .. } => (
                         Color::WHITE,
                         if cursor.is_over(layout.bounds()) {
                             bounds
@@ -622,6 +623,9 @@ where
         shell: &mut Shell<'_, Message>,
         viewport: &Rectangle,
     ) {
+        let cursor_above = cursor;
+        let cursor = cursor * self.state.transformation(cursor).inverse();
+
         for ((node, layout), tree) in self
             .nodes
             .iter_mut()
@@ -633,69 +637,104 @@ where
             );
         }
 
-        match event {
-            Event::Window(window::Event::RedrawRequested(_))
-            | Event::Mouse(mouse::Event::ButtonPressed(mouse::Button::Left)) => {
-                let state = tree.state.downcast_mut::<Internal>();
+        if let Event::Window(window::Event::RedrawRequested(_))
+        | Event::Mouse(mouse::Event::ButtonPressed(mouse::Button::Left)) = event
+        {
+            let state = tree.state.downcast_mut::<Internal>();
 
-                for notification in self.state.receiver.try_iter() {
-                    match notification {
-                        Notification::InputChanged(input, bounds) => {
-                            let _ = state.inputs.insert(input, bounds);
+            for notification in self.state.receiver.try_iter() {
+                match notification {
+                    Notification::InputChanged(input, bounds) => {
+                        let _ = state.inputs.insert(input, bounds);
 
+                        if let Some(node) = self.state.nodes.get(&input.node) {
+                            node.links.clear();
+                        }
+                    }
+                    Notification::OutputChanged(output, bounds) => {
+                        let _ = state.outputs.insert(output, bounds);
+
+                        for (input, _) in self
+                            .state
+                            .links
+                            .iter()
+                            .filter(|(_input, candidate)| **candidate == output)
+                        {
                             if let Some(node) = self.state.nodes.get(&input.node) {
                                 node.links.clear();
                             }
                         }
-                        Notification::OutputChanged(output, bounds) => {
-                            let _ = state.outputs.insert(output, bounds);
+                    }
+                    Notification::ConnectorPressed(connector) => {
+                        if self.on_link.is_some() {
+                            self.state
+                                .interaction
+                                .set(Interaction::Connecting(connector));
 
-                            for (input, _) in self
-                                .state
-                                .links
-                                .iter()
-                                .filter(|(_input, candidate)| **candidate == output)
-                            {
-                                if let Some(node) = self.state.nodes.get(&input.node) {
-                                    node.links.clear();
-                                }
-                            }
-                        }
-                        Notification::ConnectorPressed(connector) => {
-                            if self.on_link.is_some() {
-                                self.state
-                                    .interaction
-                                    .set(Interaction::Connecting(connector));
-
-                                shell.request_redraw();
-                            }
+                            shell.request_redraw();
                         }
                     }
                 }
             }
-            Event::Mouse(mouse::Event::ButtonReleased(mouse::Button::Left)) => {
-                match self.state.interaction.get() {
-                    Interaction::None => {}
-                    Interaction::Connecting(connector) => {
-                        let state = tree.state.downcast_ref::<Internal>();
+        }
 
-                        if let Some(on_link) = &self.on_link
-                            && let Some(connection) =
-                                self.connection(layout, cursor, state, connector)
-                            && let Some(link) = connection.link
-                        {
-                            shell.publish(on_link(link));
-                        }
-                    }
+        match self.state.interaction.get() {
+            Interaction::None => {
+                if shell.is_event_captured() {
+                    return;
                 }
 
-                self.state.interaction.set(Interaction::None);
+                let Event::Mouse(mouse::Event::ButtonPressed(
+                    mouse::Button::Left | mouse::Button::Middle,
+                )) = event
+                else {
+                    return;
+                };
+
+                let Some(from) = cursor_above.position() else {
+                    return;
+                };
+
+                self.state.interaction.set(Interaction::Panning { from });
+                shell.request_redraw();
             }
-            _ => {}
+            Interaction::Connecting(connector) => {
+                if let Event::Mouse(mouse::Event::ButtonReleased(mouse::Button::Left)) = event {
+                    let state = tree.state.downcast_ref::<Internal>();
+
+                    if let Some(on_link) = &self.on_link
+                        && let Some(connection) = self.connection(layout, cursor, state, connector)
+                        && let Some(link) = connection.link
+                    {
+                        shell.publish(on_link(link));
+                    }
+
+                    self.state.interaction.set(Interaction::None);
+                }
+            }
+            Interaction::Panning { from } => {
+                if let Event::Mouse(mouse::Event::ButtonReleased(
+                    mouse::Button::Left | mouse::Button::Middle,
+                )) = event
+                {
+                    self.state.interaction.set(Interaction::None);
+
+                    let Some(to) = cursor_above.position() else {
+                        return;
+                    };
+
+                    self.state
+                        .translation
+                        .set(self.state.translation.get() + (to - from));
+
+                    shell.request_redraw();
+                }
+            }
         }
 
         if let Event::Window(window::Event::RedrawRequested(_)) = event
-            && let Interaction::Connecting(_) = self.state.interaction.get()
+            && let Interaction::Connecting(_) | Interaction::Panning { .. } =
+                self.state.interaction.get()
         {
             shell.request_redraw();
         }
@@ -708,10 +747,18 @@ where
         theme: &Theme,
         style: &renderer::Style,
         layout: Layout<'_>,
-        mut cursor: mouse::Cursor,
+        cursor: mouse::Cursor,
         viewport: &Rectangle,
     ) {
         let state = tree.state.downcast_ref::<Internal>();
+
+        let transformation = self.state.transformation(cursor);
+        let inverse = transformation.inverse();
+
+        let mut cursor = cursor * transformation.inverse();
+        let viewport = layout.bounds().intersection(viewport).unwrap_or(*viewport) * inverse;
+
+        renderer.start_transformation(transformation);
 
         for node in self.state.nodes.values() {
             let geometry = node.links.draw(renderer, Size::INFINITY, |frame| {
@@ -739,7 +786,7 @@ where
         }
 
         match self.state.interaction.get() {
-            Interaction::None => {}
+            Interaction::None | Interaction::Panning { .. } => {}
             Interaction::Connecting(connector) => {
                 let connection = self.connection(layout, cursor, state, connector);
 
@@ -755,14 +802,16 @@ where
             }
         }
 
-        renderer.with_layer(*viewport, |renderer| {
+        renderer.with_layer(viewport, |renderer| {
             for ((node, layout), tree) in
                 self.nodes.iter().zip(layout.children()).zip(&tree.children)
             {
                 node.as_widget()
-                    .draw(tree, renderer, theme, style, layout, cursor, viewport);
+                    .draw(tree, renderer, theme, style, layout, cursor, &viewport);
             }
         });
+
+        renderer.end_transformation();
     }
 
     fn mouse_interaction(
@@ -773,8 +822,15 @@ where
         viewport: &Rectangle,
         renderer: &Renderer,
     ) -> mouse::Interaction {
-        let interaction = self
-            .nodes
+        match self.state.interaction.get() {
+            Interaction::None => {}
+            Interaction::Connecting(_) => return mouse::Interaction::Crosshair,
+            Interaction::Panning { .. } => return mouse::Interaction::Grabbing,
+        }
+
+        let cursor = cursor * self.state.transformation(cursor).inverse();
+
+        self.nodes
             .iter()
             .zip(&tree.children)
             .zip(layout.children())
@@ -784,16 +840,7 @@ where
                     .mouse_interaction(state, layout, cursor, viewport, renderer)
             })
             .max()
-            .unwrap_or_default();
-
-        if interaction != mouse::Interaction::None {
-            return interaction;
-        }
-
-        match self.state.interaction.get() {
-            Interaction::None => mouse::Interaction::None,
-            Interaction::Connecting(_) => mouse::Interaction::Crosshair,
-        }
+            .unwrap_or_default()
     }
 
     fn overlay<'b>(
@@ -884,6 +931,7 @@ where
     sender: mpsc::Sender<Notification>,
     receiver: mpsc::Receiver<Notification>,
     interaction: Cell<Interaction>,
+    translation: Cell<Vector>,
 }
 
 impl<T, Renderer> Clone for Graph<T, Renderer>
@@ -903,6 +951,7 @@ where
             sender,
             receiver,
             interaction: Cell::new(Interaction::None),
+            translation: self.translation.clone(),
         }
     }
 }
@@ -947,6 +996,7 @@ struct Internal {
 enum Interaction {
     None,
     Connecting(ConnectorKind),
+    Panning { from: Point },
 }
 
 #[derive(Debug)]
@@ -992,7 +1042,10 @@ where
     }
 }
 
-impl<T> Graph<T> {
+impl<T, Renderer> Graph<T, Renderer>
+where
+    Renderer: geometry::Renderer,
+{
     pub fn new(evaluate: fn(&mut T, Data<'_>)) -> Self {
         let (sender, receiver) = mpsc::channel();
 
@@ -1005,6 +1058,7 @@ impl<T> Graph<T> {
             sender,
             receiver,
             interaction: Cell::new(Interaction::None),
+            translation: Cell::new(Vector::ZERO),
         }
     }
 
@@ -1044,7 +1098,7 @@ impl<T> Graph<T> {
         output.0.as_ref()?.downcast_ref()
     }
 
-    pub fn build(&mut self) -> Builder<'_, T> {
+    pub fn build(&mut self) -> Builder<'_, T, Renderer> {
         let node = Node(self.current);
         self.current += 1;
 
@@ -1056,7 +1110,11 @@ impl<T> Graph<T> {
         }
     }
 
-    pub fn push(&mut self, position: impl Into<Point>, f: impl FnOnce(&mut Builder<'_, T>) -> T) {
+    pub fn push(
+        &mut self,
+        position: impl Into<Point>,
+        f: impl FnOnce(&mut Builder<'_, T, Renderer>) -> T,
+    ) {
         let mut builder = self.build();
         let state = f(&mut builder);
         builder.finish(position, state);
@@ -1152,6 +1210,17 @@ impl<T> Graph<T> {
         schedule
     }
 
+    fn transformation(&self, cursor: mouse::Cursor) -> Transformation {
+        let translation = match self.interaction.get() {
+            Interaction::None | Interaction::Connecting(_) => self.translation.get(),
+            Interaction::Panning { from } => {
+                self.translation.get() + (cursor.position().unwrap_or(from) - from)
+            }
+        };
+
+        Transformation::translate(translation.x.round(), translation.y.round())
+    }
+
     fn evaluate(&mut self, node: Node) {
         let Some(node) = self.nodes.get_mut(&node) else {
             return;
@@ -1210,14 +1279,20 @@ struct OutputId {
     name: &'static str,
 }
 
-pub struct Builder<'a, T> {
-    graph: &'a mut Graph<T>,
+pub struct Builder<'a, T, Renderer>
+where
+    Renderer: geometry::Renderer,
+{
+    graph: &'a mut Graph<T, Renderer>,
     node: Node,
     inputs: Vec<InputId>,
     outputs: Vec<OutputId>,
 }
 
-impl<T> Builder<'_, T> {
+impl<T, Renderer> Builder<'_, T, Renderer>
+where
+    Renderer: geometry::Renderer,
+{
     pub fn input<A>(&mut self, name: &'static str) -> Input<A> {
         let id = InputId {
             node: self.node,
