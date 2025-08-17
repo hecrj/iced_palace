@@ -1,5 +1,6 @@
 use crate::core;
 use crate::core::border;
+use crate::core::keyboard;
 use crate::core::layout::{self, Layout};
 use crate::core::mouse;
 use crate::core::overlay;
@@ -572,6 +573,7 @@ where
         tree::State::new(Internal {
             inputs: HashMap::new(),
             outputs: HashMap::new(),
+            modifiers: keyboard::Modifiers::default(),
         })
     }
 
@@ -637,6 +639,13 @@ where
             );
         }
 
+        if let Event::Keyboard(keyboard::Event::ModifiersChanged(modifiers)) = event {
+            let state = tree.state.downcast_mut::<Internal>();
+
+            state.modifiers = *modifiers;
+            return;
+        }
+
         if let Event::Window(window::Event::RedrawRequested(_))
         | Event::Mouse(mouse::Event::ButtonPressed(mouse::Button::Left)) = event
         {
@@ -675,6 +684,50 @@ where
                         }
                     }
                 }
+            }
+        }
+
+        if let Event::Mouse(mouse::Event::WheelScrolled { delta }) = event {
+            let state = tree.state.downcast_mut::<Internal>();
+
+            if state.modifiers.command() {
+                match delta {
+                    mouse::ScrollDelta::Lines { y, .. } | mouse::ScrollDelta::Pixels { y, .. } => {
+                        let zoom = self.state.zoom.get();
+                        let factor = if *y > 0.0 { 2.0 } else { 0.5 };
+                        let new_zoom = (zoom * factor).clamp(0.25, 4.0);
+
+                        self.state.zoom.set(new_zoom);
+
+                        if let Some(pointer) = cursor.position() {
+                            self.state.translation.set(
+                                self.state.translation.get()
+                                    + (Point::ORIGIN - pointer) * (new_zoom - zoom),
+                            );
+                        }
+
+                        shell.request_redraw();
+                    }
+                }
+            } else {
+                let panning = match delta {
+                    mouse::ScrollDelta::Lines { y, .. } => {
+                        let pixels = 100.0 * y;
+
+                        if state.modifiers.shift() {
+                            Vector::new(pixels, 0.0)
+                        } else {
+                            Vector::new(0.0, pixels)
+                        }
+                    }
+                    mouse::ScrollDelta::Pixels { x, y } => Vector::new(*x, *y),
+                };
+
+                self.state
+                    .translation
+                    .set(self.state.translation.get() + panning);
+
+                shell.request_redraw();
             }
         }
 
@@ -932,28 +985,7 @@ where
     receiver: mpsc::Receiver<Notification>,
     interaction: Cell<Interaction>,
     translation: Cell<Vector>,
-}
-
-impl<T, Renderer> Clone for Graph<T, Renderer>
-where
-    T: Clone,
-    Renderer: geometry::Renderer,
-{
-    fn clone(&self) -> Self {
-        let (sender, receiver) = mpsc::channel();
-
-        Self {
-            nodes: self.nodes.clone(),
-            links: self.links.clone(),
-            values: self.values.clone(),
-            current: self.current,
-            evaluate: self.evaluate,
-            sender,
-            receiver,
-            interaction: Cell::new(Interaction::None),
-            translation: self.translation.clone(),
-        }
-    }
+    zoom: Cell<f32>,
 }
 
 pub struct Data<'a> {
@@ -990,6 +1022,7 @@ impl Data<'_> {
 struct Internal {
     inputs: HashMap<InputId, Rectangle>,
     outputs: HashMap<OutputId, Rectangle>,
+    modifiers: keyboard::Modifiers,
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -1059,6 +1092,7 @@ where
             receiver,
             interaction: Cell::new(Interaction::None),
             translation: Cell::new(Vector::ZERO),
+            zoom: Cell::new(1.0),
         }
     }
 
@@ -1133,7 +1167,9 @@ where
 
     pub fn move_to(&mut self, node: Node, position: impl Into<Point>) {
         if let Some(node) = self.nodes.get_mut(&node) {
-            node.position = position.into();
+            let position = position.into();
+
+            node.position = Point::new(position.x.round(), position.y.round());
         }
     }
 
@@ -1219,6 +1255,7 @@ where
         };
 
         Transformation::translate(translation.x.round(), translation.y.round())
+            * Transformation::scale(self.zoom.get())
     }
 
     fn evaluate(&mut self, node: Node) {
@@ -1260,6 +1297,29 @@ where
             }
 
             visited.insert(node);
+        }
+    }
+}
+
+impl<T, Renderer> Clone for Graph<T, Renderer>
+where
+    T: Clone,
+    Renderer: geometry::Renderer,
+{
+    fn clone(&self) -> Self {
+        let (sender, receiver) = mpsc::channel();
+
+        Self {
+            nodes: self.nodes.clone(),
+            links: self.links.clone(),
+            values: self.values.clone(),
+            current: self.current,
+            evaluate: self.evaluate,
+            sender,
+            receiver,
+            interaction: Cell::new(Interaction::None),
+            translation: self.translation.clone(),
+            zoom: self.zoom.clone(),
         }
     }
 }
