@@ -223,14 +223,12 @@ impl<'a, T> Interface<'a, T> {
                     return interaction;
                 }
 
-                if cursor.is_over(layout.bounds()) {
-                    let state = tree.state.downcast_ref::<State>();
+                let state = tree.state.downcast_ref::<State>();
 
-                    if state.drag_started_at.is_some() {
-                        mouse::Interaction::Grabbing
-                    } else {
-                        mouse::Interaction::Grab
-                    }
+                if state.drag_started_at.is_some() {
+                    mouse::Interaction::Grabbing
+                } else if cursor.is_over(layout.bounds()) {
+                    mouse::Interaction::Grab
                 } else {
                     mouse::Interaction::None
                 }
@@ -462,7 +460,7 @@ where
         state: &Internal,
         connector: ConnectorKind,
     ) -> Option<Connection> {
-        let target = cursor.position_in(layout.bounds())?;
+        let target = cursor.position()?;
 
         let hovered_node = self
             .state
@@ -605,7 +603,7 @@ where
                     .layout(
                         tree,
                         renderer,
-                        &layout::Limits::new(Size::ZERO, Size::INFINITY),
+                        &layout::Limits::new(Size::ZERO, Size::INFINITE),
                     )
                     .move_to(state.position)
             })
@@ -805,35 +803,39 @@ where
     ) {
         let state = tree.state.downcast_ref::<Internal>();
 
+        let bounds = layout.bounds();
         let transformation = self.state.transformation(cursor);
         let inverse = transformation.inverse();
 
         let mut cursor = cursor * transformation.inverse();
-        let viewport = layout.bounds().intersection(viewport).unwrap_or(*viewport) * inverse;
+        let viewport = bounds.intersection(viewport).unwrap_or(*viewport) * inverse;
 
         renderer.start_transformation(transformation);
+        renderer.start_layer(viewport);
 
         for node in self.state.nodes.values() {
-            let geometry = node.links.draw(renderer, Size::INFINITY, |frame| {
-                for input in &node.inputs {
-                    let Some(output) = self.state.links.get(input) else {
-                        continue;
-                    };
+            let geometry = node
+                .links
+                .draw_with_bounds(renderer, Rectangle::INFINITE, |frame| {
+                    for input in &node.inputs {
+                        let Some(output) = self.state.links.get(input) else {
+                            continue;
+                        };
 
-                    let Some(start_bounds) = state.outputs.get(output) else {
-                        continue;
-                    };
+                        let Some(start_bounds) = state.outputs.get(output) else {
+                            continue;
+                        };
 
-                    let Some(end_bounds) = state.inputs.get(input) else {
-                        continue;
-                    };
+                        let Some(end_bounds) = state.inputs.get(input) else {
+                            continue;
+                        };
 
-                    let start = start_bounds.center();
-                    let end = end_bounds.center();
+                        let start = start_bounds.center();
+                        let end = end_bounds.center();
 
-                    draw_connection(frame, start, end);
-                }
-            });
+                        draw_connection(frame, start, end);
+                    }
+                });
 
             renderer.draw_geometry(geometry);
         }
@@ -844,7 +846,7 @@ where
                 let connection = self.connection(layout, cursor, state, connector);
 
                 if let Some(connection) = connection {
-                    let mut frame = canvas::Frame::new(renderer, Size::INFINITY);
+                    let mut frame = canvas::Frame::with_bounds(renderer, Rectangle::INFINITE);
 
                     draw_connection(&mut frame, connection.start, connection.end);
 
@@ -855,15 +857,15 @@ where
             }
         }
 
-        renderer.with_layer(viewport, |renderer| {
-            for ((node, layout), tree) in
-                self.nodes.iter().zip(layout.children()).zip(&tree.children)
-            {
-                node.as_widget()
-                    .draw(tree, renderer, theme, style, layout, cursor, &viewport);
-            }
-        });
+        renderer.end_layer();
+        renderer.start_layer(viewport);
 
+        for ((node, layout), tree) in self.nodes.iter().zip(layout.children()).zip(&tree.children) {
+            node.as_widget()
+                .draw(tree, renderer, theme, style, layout, cursor, &viewport);
+        }
+
+        renderer.end_layer();
         renderer.end_transformation();
     }
 
