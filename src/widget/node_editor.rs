@@ -624,8 +624,12 @@ where
         shell: &mut Shell<'_, Message>,
         viewport: &Rectangle,
     ) {
-        let cursor_above = cursor;
-        let cursor = cursor * self.state.transformation().inverse();
+        let cursor_external = cursor;
+        let cursor = if cursor.is_over(layout.bounds()) {
+            cursor * self.state.transformation().inverse()
+        } else {
+            cursor.levitate()
+        };
         let mut cursor_node = cursor;
 
         for node in self.state.order.borrow().iter().rev() {
@@ -755,7 +759,7 @@ where
                     button @ (mouse::Button::Left | mouse::Button::Middle),
                 )) = event
                 {
-                    let Some(from) = cursor_above.position() else {
+                    let Some(from) = cursor_external.position() else {
                         return;
                     };
 
@@ -803,7 +807,7 @@ where
                 }
             }
             Interaction::Panning { from, to } => {
-                if let Some(to) = cursor_above.position() {
+                if let Some(to) = cursor_external.position() {
                     self.state
                         .interaction
                         .set(Interaction::Panning { from, to });
@@ -939,7 +943,11 @@ where
             Interaction::Panning { .. } => return mouse::Interaction::Grabbing,
         }
 
-        let cursor = cursor * self.state.transformation().inverse();
+        let cursor = if cursor.is_over(layout.bounds()) {
+            cursor * self.state.transformation().inverse()
+        } else {
+            cursor.levitate()
+        };
 
         for node in self.state.order.borrow().iter().rev() {
             let Some(index) = self.state.nodes.get_index_of(node) else {
