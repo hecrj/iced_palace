@@ -625,7 +625,7 @@ where
         viewport: &Rectangle,
     ) {
         let cursor_above = cursor;
-        let cursor = cursor * self.state.transformation(cursor).inverse();
+        let cursor = cursor * self.state.transformation().inverse();
         let mut cursor_node = cursor;
 
         for node in self.state.order.borrow().iter().rev() {
@@ -782,7 +782,9 @@ where
                         return;
                     }
 
-                    self.state.interaction.set(Interaction::Panning { from });
+                    self.state
+                        .interaction
+                        .set(Interaction::Panning { from, to: from });
                     shell.request_redraw();
                 }
             }
@@ -800,22 +802,25 @@ where
                     self.state.interaction.set(Interaction::None);
                 }
             }
-            Interaction::Panning { from } => {
+            Interaction::Panning { from, to } => {
+                if let Some(to) = cursor_above.position() {
+                    self.state
+                        .interaction
+                        .set(Interaction::Panning { from, to });
+                }
+
                 if let Event::Mouse(mouse::Event::ButtonReleased(
                     mouse::Button::Left | mouse::Button::Middle,
                 )) = event
                 {
                     self.state.interaction.set(Interaction::None);
 
-                    let Some(to) = cursor_above.position() else {
-                        return;
-                    };
-
                     self.state
                         .translation
                         .set(self.state.translation.get() + (to - from));
 
                     shell.request_redraw();
+                    return;
                 }
             }
         }
@@ -841,7 +846,7 @@ where
         let state = tree.state.downcast_ref::<Internal>();
 
         let bounds = layout.bounds();
-        let transformation = self.state.transformation(cursor);
+        let transformation = self.state.transformation();
         let inverse = transformation.inverse();
 
         let mut cursor = cursor * transformation.inverse();
@@ -934,7 +939,7 @@ where
             Interaction::Panning { .. } => return mouse::Interaction::Grabbing,
         }
 
-        let cursor = cursor * self.state.transformation(cursor).inverse();
+        let cursor = cursor * self.state.transformation().inverse();
 
         for node in self.state.order.borrow().iter().rev() {
             let Some(index) = self.state.nodes.get_index_of(node) else {
@@ -965,14 +970,121 @@ where
         viewport: &Rectangle,
         translation: Vector,
     ) -> Option<overlay::Element<'b, Message, Theme, Renderer>> {
-        overlay::from_children(
+        let transformation = self.state.transformation();
+        let panning = transformation.translation() * (1.0 / transformation.scale_factor());
+
+        let content = overlay::from_children(
             &mut self.nodes,
             tree,
             layout,
             renderer,
             viewport,
-            translation,
+            translation + panning,
+        )?;
+
+        Some(overlay::Element::new(Box::new(Overlay {
+            content,
+            transformation: transformation * Transformation::translate(-panning.x, -panning.y),
+        })))
+    }
+}
+
+struct Overlay<'a, Message, Theme, Renderer> {
+    content: overlay::Element<'a, Message, Theme, Renderer>,
+    transformation: Transformation,
+}
+
+impl<'a, Message, Theme, Renderer> overlay::Overlay<Message, Theme, Renderer>
+    for Overlay<'a, Message, Theme, Renderer>
+where
+    Renderer: core::Renderer,
+{
+    fn layout(&mut self, renderer: &Renderer, bounds: Size) -> layout::Node {
+        self.content.as_overlay_mut().layout(
+            renderer,
+            bounds * (1.0 / self.transformation.scale_factor()),
         )
+    }
+
+    fn update(
+        &mut self,
+        event: &Event,
+        layout: Layout<'_>,
+        cursor: mouse::Cursor,
+        renderer: &Renderer,
+        clipboard: &mut dyn Clipboard,
+        shell: &mut Shell<'_, Message>,
+    ) {
+        self.content.as_overlay_mut().update(
+            event,
+            layout,
+            cursor * self.transformation.inverse(),
+            renderer,
+            clipboard,
+            shell,
+        );
+    }
+
+    fn draw(
+        &self,
+        renderer: &mut Renderer,
+        theme: &Theme,
+        style: &renderer::Style,
+        layout: Layout<'_>,
+        cursor: mouse::Cursor,
+    ) {
+        renderer.start_transformation(self.transformation);
+
+        self.content.as_overlay().draw(
+            renderer,
+            theme,
+            style,
+            layout,
+            cursor * self.transformation.inverse(),
+        );
+
+        renderer.end_transformation();
+    }
+
+    fn mouse_interaction(
+        &self,
+        layout: Layout<'_>,
+        cursor: mouse::Cursor,
+        renderer: &Renderer,
+    ) -> mouse::Interaction {
+        self.content.as_overlay().mouse_interaction(
+            layout,
+            cursor * self.transformation.inverse(),
+            renderer,
+        )
+    }
+
+    fn overlay<'b>(
+        &'b mut self,
+        layout: Layout<'b>,
+        renderer: &Renderer,
+    ) -> Option<overlay::Element<'b, Message, Theme, Renderer>> {
+        let content = self.content.as_overlay_mut().overlay(layout, renderer)?;
+
+        Some(overlay::Element::new(Box::new(Overlay {
+            content,
+            transformation: self.transformation,
+        })))
+    }
+
+    fn operate(
+        &mut self,
+        layout: Layout<'_>,
+        renderer: &Renderer,
+        operation: &mut dyn iced_core::widget::Operation,
+    ) {
+        self.content
+            .as_overlay_mut()
+            .operate(layout, renderer, operation);
+    }
+
+    fn index(&self) -> f32 {
+        self.content.as_overlay().index()
     }
 }
 
@@ -1091,7 +1203,7 @@ struct Internal {
 enum Interaction {
     None,
     Connecting(ConnectorKind),
-    Panning { from: Point },
+    Panning { from: Point, to: Point },
 }
 
 #[derive(Debug)]
@@ -1309,12 +1421,10 @@ where
         schedule
     }
 
-    fn transformation(&self, cursor: mouse::Cursor) -> Transformation {
+    fn transformation(&self) -> Transformation {
         let translation = match self.interaction.get() {
             Interaction::None | Interaction::Connecting(_) => self.translation.get(),
-            Interaction::Panning { from } => {
-                self.translation.get() + (cursor.position().unwrap_or(from) - from)
-            }
+            Interaction::Panning { from, to } => self.translation.get() + (to - from),
         };
 
         Transformation::translate(translation.x.round(), translation.y.round())
