@@ -380,7 +380,9 @@ impl<'a> Connector<'a> {
                 let bounds = layout.bounds();
 
                 let (color, bounds) = match self.interaction.get() {
-                    Interaction::None | Interaction::Panning { .. } => (
+                    Interaction::None
+                    | Interaction::Panning { .. }
+                    | Interaction::Resizing { .. } => (
                         Color::WHITE,
                         if cursor.is_over(layout.bounds()) {
                             bounds
@@ -600,11 +602,28 @@ where
             .zip(&mut tree.children)
             .zip(self.state.nodes.values())
             .map(|((node, tree), state)| {
+                let size = node.as_widget().size_hint();
+                let limits = state.size.get();
+
                 node.as_widget()
                     .layout(
                         tree,
                         renderer,
-                        &layout::Limits::new(Size::ZERO, Size::INFINITE),
+                        &layout::Limits::new(
+                            Size::ZERO,
+                            Size::new(
+                                if size.width.is_fill() {
+                                    limits.width
+                                } else {
+                                    f32::INFINITY
+                                },
+                                if size.height.is_fill() {
+                                    limits.height
+                                } else {
+                                    f32::INFINITY
+                                },
+                            ),
+                        ),
                     )
                     .move_to(state.position)
             })
@@ -766,16 +785,39 @@ where
                     if *button == mouse::Button::Left {
                         let mut order = self.state.order.borrow_mut();
                         let node_hovered = order.iter().enumerate().rev().find_map(|(i, node)| {
+                            let node_index = self.state.nodes.get_index_of(node)?;
+
                             cursor
-                                .is_over(
-                                    layout.child(self.state.nodes.get_index_of(node)?).bounds(),
-                                )
-                                .then_some(i)
+                                .is_over(layout.child(node_index).bounds())
+                                .then_some((i, node_index))
                         });
 
-                        if let Some(index) = node_hovered {
-                            let node = order.remove(index);
+                        if let Some((order_index, node_index)) = node_hovered {
+                            let node = order.remove(order_index);
                             order.push(node);
+
+                            let size_hint = self.nodes[node_index].as_widget().size_hint();
+
+                            let Some(from) = cursor.position() else {
+                                return;
+                            };
+
+                            if let Some(resize_direction) = Direction::detect(
+                                size_hint,
+                                layout.child(node_index).bounds(),
+                                from,
+                            ) {
+                                let Some(node) = self.state.nodes.get(&node) else {
+                                    return;
+                                };
+
+                                self.state.interaction.set(Interaction::Resizing {
+                                    node: node.id,
+                                    original: node.size.get(),
+                                    direction: resize_direction,
+                                    from,
+                                });
+                            }
 
                             shell.request_redraw();
                             return;
@@ -825,6 +867,48 @@ where
 
                     shell.request_redraw();
                     return;
+                }
+            }
+            Interaction::Resizing {
+                node,
+                original,
+                direction,
+                from,
+            } => {
+                if let Event::Mouse(mouse::Event::ButtonReleased(mouse::Button::Left)) = event {
+                    self.state.interaction.set(Interaction::None);
+                } else if let Some(to) = cursor.position()
+                    && let Some(node) = self.state.nodes.get(&node)
+                {
+                    let old_size = node.size.get();
+                    let new_width = (original.width + to.x - from.x).round().max(50.0);
+                    let new_height = (original.height + to.y - from.y).round().max(10.0);
+
+                    match direction {
+                        Direction::Horizontal => {
+                            node.size.set(Size {
+                                width: new_width,
+                                ..original
+                            });
+                        }
+                        Direction::Vertical => {
+                            node.size.set(Size {
+                                height: new_height,
+                                ..original
+                            });
+                        }
+                        Direction::Diagonal => {
+                            node.size.set(Size {
+                                width: new_width,
+                                height: new_height,
+                            });
+                        }
+                    }
+
+                    if old_size != node.size.get() {
+                        shell.invalidate_layout();
+                        shell.request_redraw();
+                    }
                 }
             }
         }
@@ -887,7 +971,7 @@ where
         }
 
         match self.state.interaction.get() {
-            Interaction::None | Interaction::Panning { .. } => {}
+            Interaction::None | Interaction::Panning { .. } | Interaction::Resizing { .. } => {}
             Interaction::Connecting(connector) => {
                 let connection = self.connection(layout, cursor, state, connector);
 
@@ -941,6 +1025,7 @@ where
             Interaction::None => {}
             Interaction::Connecting(_) => return mouse::Interaction::Crosshair,
             Interaction::Panning { .. } => return mouse::Interaction::Grabbing,
+            Interaction::Resizing { direction, .. } => return direction.to_mouse_interaction(),
         }
 
         let cursor = if cursor.is_over(layout.bounds()) {
@@ -962,8 +1047,14 @@ where
                 .as_widget()
                 .mouse_interaction(tree, layout, cursor, viewport, renderer);
 
-            if interaction != mouse::Interaction::None || cursor.is_over(layout.bounds()) {
+            if interaction != mouse::Interaction::None {
                 return interaction;
+            }
+
+            if let Some(position) = cursor.position_over(layout.bounds()) {
+                return Direction::detect(node.as_widget().size_hint(), layout.bounds(), position)
+                    .map(Direction::to_mouse_interaction)
+                    .unwrap_or(interaction);
             }
         }
 
@@ -1211,7 +1302,45 @@ struct Internal {
 enum Interaction {
     None,
     Connecting(ConnectorKind),
-    Panning { from: Point, to: Point },
+    Panning {
+        from: Point,
+        to: Point,
+    },
+    Resizing {
+        node: Node,
+        original: Size,
+        direction: Direction,
+        from: Point,
+    },
+}
+
+#[derive(Debug, Clone, Copy)]
+enum Direction {
+    Horizontal,
+    Vertical,
+    Diagonal,
+}
+
+impl Direction {
+    fn detect(size: Size<Length>, bounds: Rectangle, cursor: Point) -> Option<Self> {
+        let horizontal = size.width.is_fill() && cursor.x >= bounds.x + bounds.width - 5.0;
+        let vertical = size.height.is_fill() && cursor.y >= bounds.y + bounds.height - 5.0;
+
+        Some(match (horizontal, vertical) {
+            (false, false) => None?,
+            (false, true) => Self::Vertical,
+            (true, false) => Self::Horizontal,
+            (true, true) => Self::Diagonal,
+        })
+    }
+
+    fn to_mouse_interaction(self) -> mouse::Interaction {
+        match self {
+            Self::Horizontal => mouse::Interaction::ResizingHorizontally,
+            Self::Vertical => mouse::Interaction::ResizingVertically,
+            Self::Diagonal => mouse::Interaction::ResizingDiagonallyDown,
+        }
+    }
 }
 
 #[derive(Debug)]
@@ -1225,8 +1354,10 @@ struct State<T, Renderer>
 where
     Renderer: geometry::Renderer,
 {
+    id: Node,
     state: T,
     position: Point,
+    size: Cell<Size>,
     inputs: Vec<InputId>,
     outputs: Vec<OutputId>,
     links: canvas::Cache<Renderer>,
@@ -1248,8 +1379,10 @@ where
 {
     fn clone(&self) -> Self {
         Self {
+            id: self.id,
             state: self.state.clone(),
             position: self.position,
+            size: self.size.clone(),
             inputs: self.inputs.clone(),
             outputs: self.outputs.clone(),
             links: canvas::Cache::new(),
@@ -1322,6 +1455,7 @@ where
         Builder {
             graph: self,
             node,
+            size: Size::new(200.0, 200.0), // TODO: Configurable!
             inputs: Vec::new(),
             outputs: Vec::new(),
         }
@@ -1431,7 +1565,9 @@ where
 
     fn transformation(&self) -> Transformation {
         let translation = match self.interaction.get() {
-            Interaction::None | Interaction::Connecting(_) => self.translation.get(),
+            Interaction::None | Interaction::Connecting(_) | Interaction::Resizing { .. } => {
+                self.translation.get()
+            }
             Interaction::Panning { from, to } => self.translation.get() + (to - from),
         };
 
@@ -1521,12 +1657,13 @@ struct OutputId {
     name: &'static str,
 }
 
-pub struct Builder<'a, T, Renderer>
+pub struct Builder<'a, T, Renderer = iced_widget::Renderer>
 where
     Renderer: geometry::Renderer,
 {
     graph: &'a mut Graph<T, Renderer>,
     node: Node,
+    size: Size,
     inputs: Vec<InputId>,
     outputs: Vec<OutputId>,
 }
@@ -1563,12 +1700,18 @@ where
         }
     }
 
+    pub fn size(&mut self, size: impl Into<Size>) {
+        self.size = size.into();
+    }
+
     pub fn finish(self, position: impl Into<Point>, state: T) {
         let _ = self.graph.nodes.insert(
             self.node,
             State {
+                id: self.node,
                 state,
                 position: position.into(),
+                size: Cell::new(self.size),
                 inputs: self.inputs,
                 outputs: self.outputs,
                 links: canvas::Cache::new(),
