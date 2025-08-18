@@ -14,9 +14,10 @@ use crate::core::{
 
 use iced_widget::canvas;
 use iced_widget::graphics::geometry;
+use indexmap::IndexMap;
 
 use std::any::Any;
-use std::cell::Cell;
+use std::cell::{Cell, RefCell};
 use std::collections::HashMap;
 use std::collections::HashSet;
 use std::collections::VecDeque;
@@ -625,16 +626,35 @@ where
     ) {
         let cursor_above = cursor;
         let cursor = cursor * self.state.transformation(cursor).inverse();
+        let mut cursor_node = cursor;
 
-        for ((node, layout), tree) in self
-            .nodes
-            .iter_mut()
-            .zip(layout.children())
-            .zip(&mut tree.children)
-        {
+        for node in self.state.order.borrow().iter().rev() {
+            if shell.is_event_captured() {
+                break;
+            }
+
+            let Some(index) = self.state.nodes.get_index_of(node) else {
+                continue;
+            };
+
+            let node = &mut self.nodes[index];
+            let layout = layout.child(index);
+            let tree = &mut tree.children[index];
+
             node.as_widget_mut().update(
-                tree, event, layout, cursor, renderer, clipboard, shell, viewport,
+                tree,
+                event,
+                layout,
+                cursor_node,
+                renderer,
+                clipboard,
+                shell,
+                viewport,
             );
+
+            if cursor_node.is_over(layout.bounds()) {
+                cursor_node = mouse::Cursor::Unavailable;
+            }
         }
 
         if let Event::Keyboard(keyboard::Event::ModifiersChanged(modifiers)) = event {
@@ -731,23 +751,40 @@ where
 
         match self.state.interaction.get() {
             Interaction::None => {
-                if shell.is_event_captured() {
-                    return;
-                }
-
-                let Event::Mouse(mouse::Event::ButtonPressed(
-                    mouse::Button::Left | mouse::Button::Middle,
+                if let Event::Mouse(mouse::Event::ButtonPressed(
+                    button @ (mouse::Button::Left | mouse::Button::Middle),
                 )) = event
-                else {
-                    return;
-                };
+                {
+                    let Some(from) = cursor_above.position() else {
+                        return;
+                    };
 
-                let Some(from) = cursor_above.position() else {
-                    return;
-                };
+                    if *button == mouse::Button::Left {
+                        let mut order = self.state.order.borrow_mut();
+                        let node_hovered = order.iter().enumerate().rev().find_map(|(i, node)| {
+                            cursor
+                                .is_over(
+                                    layout.child(self.state.nodes.get_index_of(node)?).bounds(),
+                                )
+                                .then_some(i)
+                        });
 
-                self.state.interaction.set(Interaction::Panning { from });
-                shell.request_redraw();
+                        if let Some(index) = node_hovered {
+                            let node = order.remove(index);
+                            order.push(node);
+
+                            shell.request_redraw();
+                            return;
+                        }
+                    }
+
+                    if shell.is_event_captured() {
+                        return;
+                    }
+
+                    self.state.interaction.set(Interaction::Panning { from });
+                    shell.request_redraw();
+                }
             }
             Interaction::Connecting(connector) => {
                 if let Event::Mouse(mouse::Event::ButtonReleased(mouse::Button::Left)) = event {
@@ -860,9 +897,23 @@ where
         renderer.end_layer();
         renderer.start_layer(viewport);
 
-        for ((node, layout), tree) in self.nodes.iter().zip(layout.children()).zip(&tree.children) {
-            node.as_widget()
-                .draw(tree, renderer, theme, style, layout, cursor, &viewport);
+        for node in self.state.order.borrow().iter() {
+            let Some(index) = self.state.nodes.get_index_of(node) else {
+                continue;
+            };
+
+            let node = &self.nodes[index];
+            let layout = layout.child(index);
+            let tree = &tree.children[index];
+
+            if let Some(viewport) = viewport.intersection(&layout.bounds()) {
+                renderer.start_layer(viewport);
+
+                node.as_widget()
+                    .draw(tree, renderer, theme, style, layout, cursor, &viewport);
+
+                renderer.end_layer();
+            }
         }
 
         renderer.end_layer();
@@ -885,17 +936,25 @@ where
 
         let cursor = cursor * self.state.transformation(cursor).inverse();
 
-        self.nodes
-            .iter()
-            .zip(&tree.children)
-            .zip(layout.children())
-            .map(|((child, state), layout)| {
-                child
-                    .as_widget()
-                    .mouse_interaction(state, layout, cursor, viewport, renderer)
-            })
-            .max()
-            .unwrap_or_default()
+        for node in self.state.order.borrow().iter().rev() {
+            let Some(index) = self.state.nodes.get_index_of(node) else {
+                continue;
+            };
+
+            let node = &self.nodes[index];
+            let layout = layout.child(index);
+            let tree = &tree.children[index];
+
+            let interaction = node
+                .as_widget()
+                .mouse_interaction(tree, layout, cursor, viewport, renderer);
+
+            if interaction != mouse::Interaction::None || cursor.is_over(layout.bounds()) {
+                return interaction;
+            }
+        }
+
+        mouse::Interaction::None
     }
 
     fn overlay<'b>(
@@ -978,7 +1037,7 @@ pub struct Graph<T, Renderer = iced_widget::Renderer>
 where
     Renderer: geometry::Renderer,
 {
-    nodes: HashMap<Node, State<T, Renderer>>,
+    nodes: IndexMap<Node, State<T, Renderer>>,
     links: HashMap<InputId, OutputId>,
     values: HashMap<OutputId, Value>,
     current: u64,
@@ -988,6 +1047,7 @@ where
     interaction: Cell<Interaction>,
     translation: Cell<Vector>,
     zoom: Cell<f32>,
+    order: RefCell<Vec<Node>>,
 }
 
 pub struct Data<'a> {
@@ -1085,7 +1145,7 @@ where
         let (sender, receiver) = mpsc::channel();
 
         Self {
-            nodes: HashMap::new(),
+            nodes: IndexMap::new(),
             links: HashMap::new(),
             values: HashMap::new(),
             current: 0,
@@ -1095,6 +1155,7 @@ where
             interaction: Cell::new(Interaction::None),
             translation: Cell::new(Vector::ZERO),
             zoom: Cell::new(1.0),
+            order: RefCell::default(),
         }
     }
 
@@ -1322,6 +1383,7 @@ where
             interaction: Cell::new(Interaction::None),
             translation: self.translation.clone(),
             zoom: self.zoom.clone(),
+            order: self.order.clone(),
         }
     }
 }
@@ -1395,6 +1457,7 @@ where
             },
         );
 
+        self.graph.order.get_mut().push(self.node);
         self.graph.invalidate(self.node);
     }
 }

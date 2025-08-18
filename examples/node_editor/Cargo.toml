@@ -8,6 +8,6 @@ iced.workspace = true
 iced.features = ["debug"]
 
 iced_palace.workspace = true
-iced_palace.features = ["geometry"]
+iced_palace.features = ["node-editor"]
 
 function.workspace = true

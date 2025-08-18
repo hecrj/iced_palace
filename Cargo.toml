@@ -12,6 +12,7 @@ keywords.workspace = true
 [features]
 geometry = ["iced_widget/canvas"]
 macros = ["iced_palace_macros"]
+node-editor = ["geometry", "dep:indexmap"]
 
 [dependencies]
 iced_core.workspace = true
@@ -21,6 +22,9 @@ iced_palace_macros.optional = true
 
 iced_widget.workspace = true
 iced_widget.optional = true
+
+indexmap.workspace = true
+indexmap.optional = true
 
 rand.workspace = true
 rand.features = ["thread_rng"]
@@ -51,6 +55,7 @@ iced_core = "0.14.0-dev"
 iced_widget = "0.14.0-dev"
 
 function = "0.2"
+indexmap = "2"
 quote = "1"
 syn = "2"
 
