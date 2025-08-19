@@ -86,7 +86,7 @@ impl<'a, T> Interface<'a, T> {
         Renderer: core::Renderer + 'a,
     {
         struct DragHandle<'a, Message, Theme, Renderer> {
-            position: Point,
+            bounds: &'a Cell<Rectangle>,
             content: Element<'a, Message, Theme, Renderer>,
             on_drag: Box<dyn Fn(Point) -> Message + 'a>,
         }
@@ -156,7 +156,7 @@ impl<'a, T> Interface<'a, T> {
 
                         let state = tree.state.downcast_mut::<State>();
 
-                        state.drag_started_at = Some((self.position, position));
+                        state.drag_started_at = Some((self.bounds.get().position(), position));
 
                         shell.capture_event();
                     }
@@ -237,7 +237,7 @@ impl<'a, T> Interface<'a, T> {
         }
 
         Element::new(DragHandle {
-            position: self.node.position,
+            bounds: &self.node.bounds,
             content: content.into(),
             on_drag: Box::new(on_drag),
         })
@@ -603,7 +603,7 @@ where
             .zip(self.state.nodes.values())
             .map(|((node, tree), state)| {
                 let size = node.as_widget().size_hint();
-                let limits = state.size.get();
+                let bounds = state.bounds.get();
 
                 node.as_widget()
                     .layout(
@@ -613,19 +613,19 @@ where
                             Size::ZERO,
                             Size::new(
                                 if size.width.is_fill() {
-                                    limits.width
+                                    bounds.width
                                 } else {
                                     f32::INFINITY
                                 },
                                 if size.height.is_fill() {
-                                    limits.height
+                                    bounds.height
                                 } else {
                                     f32::INFINITY
                                 },
                             ),
                         ),
                     )
-                    .move_to(state.position)
+                    .move_to(bounds.position())
             })
             .collect();
 
@@ -813,7 +813,7 @@ where
 
                                 self.state.interaction.set(Interaction::Resizing {
                                     node: node.id,
-                                    original: node.size.get(),
+                                    original: node.bounds.get(),
                                     direction: resize_direction,
                                     from,
                                 });
@@ -880,32 +880,26 @@ where
                 } else if let Some(to) = cursor.position()
                     && let Some(node) = self.state.nodes.get(&node)
                 {
-                    let old_size = node.size.get();
-                    let new_width = (original.width + to.x - from.x).round().max(50.0);
-                    let new_height = (original.height + to.y - from.y).round().max(10.0);
+                    let (x_factor, y_factor) = direction.factors();
 
-                    match direction {
-                        Direction::Horizontal => {
-                            node.size.set(Size {
-                                width: new_width,
-                                ..original
-                            });
-                        }
-                        Direction::Vertical => {
-                            node.size.set(Size {
-                                height: new_height,
-                                ..original
-                            });
-                        }
-                        Direction::Diagonal => {
-                            node.size.set(Size {
-                                width: new_width,
-                                height: new_height,
-                            });
-                        }
-                    }
+                    let new_width = (original.width + (to.x - from.x) * x_factor)
+                        .round()
+                        .max(50.0);
 
-                    if old_size != node.size.get() {
+                    let new_height = (original.height + (to.y - from.y) * y_factor)
+                        .round()
+                        .max(10.0);
+
+                    let new_bounds = Rectangle {
+                        x: original.x + (new_width - original.width) * x_factor.min(0.0),
+                        y: original.y + (new_height - original.height) * y_factor.min(0.0),
+                        width: new_width,
+                        height: new_height,
+                    };
+
+                    if node.bounds.get() != new_bounds {
+                        node.bounds.set(new_bounds);
+
                         shell.invalidate_layout();
                         shell.request_redraw();
                     }
@@ -1316,7 +1310,7 @@ enum Interaction {
     },
     Resizing {
         node: Node,
-        original: Size,
+        original: Rectangle,
         direction: Direction,
         from: Point,
     },
@@ -1324,29 +1318,57 @@ enum Interaction {
 
 #[derive(Debug, Clone, Copy)]
 enum Direction {
-    Horizontal,
-    Vertical,
-    Diagonal,
+    Left,
+    Right,
+    Top,
+    Bottom,
+    TopLeft,
+    TopRight,
+    BottomLeft,
+    BottomRight,
 }
 
 impl Direction {
     fn detect(size: Size<Length>, bounds: Rectangle, cursor: Point) -> Option<Self> {
-        let horizontal = size.width.is_fill() && cursor.x >= bounds.x + bounds.width - 5.0;
-        let vertical = size.height.is_fill() && cursor.y >= bounds.y + bounds.height - 5.0;
+        const THRESHOLD: f32 = 10.0;
 
-        Some(match (horizontal, vertical) {
-            (false, false) => None?,
-            (false, true) => Self::Vertical,
-            (true, false) => Self::Horizontal,
-            (true, true) => Self::Diagonal,
+        let left = size.width.is_fill() && cursor.x <= bounds.x + THRESHOLD;
+        let right = size.width.is_fill() && cursor.x >= bounds.x + bounds.width - THRESHOLD;
+        let top = size.height.is_fill() && cursor.y <= bounds.y + THRESHOLD;
+        let bottom = size.height.is_fill() && cursor.y >= bounds.y + bounds.height - THRESHOLD;
+
+        Some(match (left, right, top, bottom) {
+            (true, _, false, false) => Self::Left,
+            (_, true, false, false) => Self::Right,
+            (false, false, true, _) => Self::Top,
+            (false, false, _, true) => Self::Bottom,
+            (true, _, true, _) => Self::TopLeft,
+            (_, true, true, _) => Self::TopRight,
+            (true, _, _, true) => Self::BottomLeft,
+            (_, true, _, true) => Self::BottomRight,
+            _ => None?,
         })
+    }
+
+    fn factors(self) -> (f32, f32) {
+        match self {
+            Direction::Left => (-1.0, 0.0),
+            Direction::Right => (1.0, 0.0),
+            Direction::Top => (0.0, -1.0),
+            Direction::Bottom => (0.0, 1.0),
+            Direction::TopLeft => (-1.0, -1.0),
+            Direction::TopRight => (1.0, -1.0),
+            Direction::BottomRight => (1.0, 1.0),
+            Direction::BottomLeft => (-1.0, 1.0),
+        }
     }
 
     fn to_mouse_interaction(self) -> mouse::Interaction {
         match self {
-            Self::Horizontal => mouse::Interaction::ResizingHorizontally,
-            Self::Vertical => mouse::Interaction::ResizingVertically,
-            Self::Diagonal => mouse::Interaction::ResizingDiagonallyDown,
+            Self::Left | Self::Right => mouse::Interaction::ResizingHorizontally,
+            Self::Top | Self::Bottom => mouse::Interaction::ResizingVertically,
+            Self::TopLeft | Self::BottomRight => mouse::Interaction::ResizingDiagonallyDown,
+            Self::TopRight | Self::BottomLeft => mouse::Interaction::ResizingDiagonallyUp,
         }
     }
 }
@@ -1364,8 +1386,7 @@ where
 {
     id: Node,
     state: T,
-    position: Point,
-    size: Cell<Size>,
+    bounds: Cell<Rectangle>,
     inputs: Vec<InputId>,
     outputs: Vec<OutputId>,
     links: canvas::Cache<Renderer>,
@@ -1389,8 +1410,7 @@ where
         Self {
             id: self.id,
             state: self.state.clone(),
-            position: self.position,
-            size: self.size.clone(),
+            bounds: self.bounds.clone(),
             inputs: self.inputs.clone(),
             outputs: self.outputs.clone(),
             links: canvas::Cache::new(),
@@ -1494,7 +1514,11 @@ where
         if let Some(node) = self.nodes.get_mut(&node) {
             let position = position.into();
 
-            node.position = Point::new(position.x.round(), position.y.round());
+            node.bounds.set(Rectangle {
+                x: position.x.round(),
+                y: position.y.round(),
+                ..node.bounds.get()
+            });
         }
     }
 
@@ -1718,8 +1742,7 @@ where
             State {
                 id: self.node,
                 state,
-                position: position.into(),
-                size: Cell::new(self.size),
+                bounds: Cell::new(Rectangle::new(position.into(), self.size)),
                 inputs: self.inputs,
                 outputs: self.outputs,
                 links: canvas::Cache::new(),

@@ -1,4 +1,4 @@
-use iced::widget::{column, container, row, text, text_input};
+use iced::widget::{center, column, container, row, text, text_input};
 use iced::{Center, Element, Font, Point, Theme};
 use iced_palace::widget::node_editor;
 use iced_palace::widget::node_editor::{Data, Graph, Input, Link, Node, Output};
@@ -119,7 +119,7 @@ impl Example {
                 )
                 .into(),
                 Instruction::Display(n) => {
-                    self.graph.input(n).map(text).unwrap_or(text("???")).into()
+                    center(self.graph.input(n).map(text).unwrap_or(text("???"))).into()
                 }
             };
 
