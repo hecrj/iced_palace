@@ -990,6 +990,8 @@ where
         renderer.end_layer();
         renderer.start_layer(viewport);
 
+        let mut bounds: Vec<Rectangle> = Vec::with_capacity(self.state.nodes.len());
+
         for node in self.state.order.borrow().iter() {
             let Some(index) = self.state.nodes.get_index_of(node) else {
                 continue;
@@ -999,13 +1001,19 @@ where
             let layout = layout.child(index);
             let tree = &tree.children[index];
 
-            if let Some(viewport) = viewport.intersection(&layout.bounds()) {
-                renderer.start_layer(viewport);
+            if let Some(clip_bounds) = viewport.intersection(&layout.bounds()) {
+                if bounds
+                    .iter()
+                    .any(|previous| previous.intersects(&clip_bounds))
+                {
+                    renderer.end_layer();
+                    renderer.start_layer(viewport);
+                }
 
                 node.as_widget()
                     .draw(tree, renderer, theme, style, layout, cursor, &viewport);
 
-                renderer.end_layer();
+                bounds.push(clip_bounds);
             }
         }
 
