@@ -114,8 +114,8 @@ impl<'a, T> Interface<'a, T> {
                 vec![Tree::new(&self.content)]
             }
 
-            fn diff(&self, tree: &mut Tree) {
-                tree.diff_children(&[self.content.as_widget()]);
+            fn diff(&mut self, tree: &mut Tree) {
+                tree.diff_children(std::slice::from_mut(&mut self.content));
             }
 
             fn size(&self) -> Size<Length> {
@@ -127,13 +127,13 @@ impl<'a, T> Interface<'a, T> {
             }
 
             fn layout(
-                &self,
+                &mut self,
                 tree: &mut Tree,
                 renderer: &Renderer,
                 limits: &layout::Limits,
             ) -> layout::Node {
                 self.content
-                    .as_widget()
+                    .as_widget_mut()
                     .layout(&mut tree.children[0], renderer, limits)
             }
 
@@ -311,7 +311,7 @@ impl<'a> Connector<'a> {
             }
 
             fn layout(
-                &self,
+                &mut self,
                 _tree: &mut Tree,
                 _renderer: &Renderer,
                 limits: &layout::Limits,
@@ -582,8 +582,8 @@ where
         self.nodes.iter().map(Tree::new).collect()
     }
 
-    fn diff(&self, tree: &mut Tree) {
-        tree.diff_children(&self.nodes);
+    fn diff(&mut self, tree: &mut Tree) {
+        tree.diff_children(&mut self.nodes);
     }
 
     fn size(&self) -> Size<Length> {
@@ -591,21 +591,21 @@ where
     }
 
     fn layout(
-        &self,
+        &mut self,
         tree: &mut Tree,
         renderer: &Renderer,
         limits: &layout::Limits,
     ) -> layout::Node {
         let nodes = self
             .nodes
-            .iter()
+            .iter_mut()
             .zip(&mut tree.children)
             .zip(self.state.nodes.values())
             .map(|((node, tree), state)| {
                 let size = node.as_widget().size_hint();
                 let bounds = state.bounds.get();
 
-                node.as_widget()
+                node.as_widget_mut()
                     .layout(
                         tree,
                         renderer,
