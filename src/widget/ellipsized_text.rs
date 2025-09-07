@@ -141,7 +141,7 @@ where
     }
 
     fn layout(
-        &self,
+        &mut self,
         tree: &mut Tree,
         renderer: &Renderer,
         limits: &layout::Limits,
@@ -170,7 +170,7 @@ where
             if changed {
                 state.ellipsis.update(text::Text {
                     content: "...",
-                    bounds: Size::INFINITY,
+                    bounds: Size::INFINITE,
                     size,
                     line_height: format.line_height,
                     font,

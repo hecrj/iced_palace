@@ -15,12 +15,11 @@ macros = ["iced_palace_macros"]
 
 [dependencies]
 iced_core.workspace = true
+iced_widget.workspace = true
+num-traits.workspace = true
 
 iced_palace_macros.workspace = true
 iced_palace_macros.optional = true
-
-iced_widget.workspace = true
-iced_widget.optional = true
 
 rand.workspace = true
 rand.features = ["thread_rng"]
@@ -50,6 +49,7 @@ iced = "0.14.0-dev"
 iced_core = "0.14.0-dev"
 iced_widget = "0.14.0-dev"
 
+num-traits = "0.2"
 quote = "1"
 syn = "2"
 

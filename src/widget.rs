@@ -17,6 +17,11 @@ pub use diffused_text::DiffusedText;
 pub use dynamic_text::DynamicText;
 
 use crate::core;
+use crate::core::border;
+use crate::core::{Alignment, Color, Element, Length};
+use iced_widget::{container, horizontal_space, row, slider, stack, text};
+
+use std::ops::RangeInclusive;
 
 pub fn typewriter<'a, Theme, Renderer>(
     fragment: impl core::text::IntoFragment<'a>,
@@ -58,4 +63,67 @@ where
     Renderer: core::text::Renderer + iced_widget::graphics::geometry::Renderer,
 {
     DynamicText::new(fragment)
+}
+
+pub fn labeled_slider<'a, T, Message, Renderer>(
+    label: impl text::IntoFragment<'a>,
+    range: RangeInclusive<T>,
+    current: T,
+    on_change: impl Fn(T) -> Message + 'a,
+    to_string: impl Fn(&T) -> String,
+) -> Element<'a, Message, core::Theme, Renderer>
+where
+    T: Copy + PartialOrd + Into<f64> + From<u8> + num_traits::FromPrimitive + 'static,
+    Message: Clone + 'a,
+    Renderer: core::text::Renderer + 'a,
+{
+    stack![
+        container(
+            slider(range, current, on_change)
+                .width(Length::Fill)
+                .height(24)
+                .style(|theme: &core::Theme, status| {
+                    let palette = theme.extended_palette();
+
+                    slider::Style {
+                        rail: slider::Rail {
+                            backgrounds: (
+                                match status {
+                                    slider::Status::Active | slider::Status::Dragged => {
+                                        palette.background.strong.color
+                                    }
+                                    slider::Status::Hovered => palette.background.strongest.color,
+                                }
+                                .into(),
+                                Color::TRANSPARENT.into(),
+                            ),
+                            width: 24.0,
+                            border: border::rounded(2),
+                        },
+                        handle: slider::Handle {
+                            shape: slider::HandleShape::Circle { radius: 0.0 },
+                            background: Color::TRANSPARENT.into(),
+                            border_width: 0.0,
+                            border_color: Color::TRANSPARENT,
+                        },
+                    }
+                })
+        )
+        .style(|theme| container::Style::default()
+            .background(theme.extended_palette().background.weakest.color)
+            .border(border::rounded(2))),
+        row![
+            text(label).size(14).style(|theme: &core::Theme| {
+                text::Style {
+                    color: Some(theme.extended_palette().background.weak.text),
+                }
+            }),
+            horizontal_space(),
+            text(to_string(&current)).size(14)
+        ]
+        .padding([0, 10])
+        .height(Length::Fill)
+        .align_y(Alignment::Center),
+    ]
+    .into()
 }
