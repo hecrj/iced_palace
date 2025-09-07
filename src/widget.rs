@@ -67,7 +67,7 @@ where
 
 pub fn labeled_slider<'a, T, Message, Renderer>(
     label: impl text::IntoFragment<'a>,
-    range: RangeInclusive<T>,
+    (range, step): (RangeInclusive<T>, T),
     current: T,
     on_change: impl Fn(T) -> Message + 'a,
     to_string: impl Fn(&T) -> String,
@@ -80,6 +80,7 @@ where
     stack![
         container(
             slider(range, current, on_change)
+                .step(step)
                 .width(Length::Fill)
                 .height(24)
                 .style(|theme: &core::Theme, status| {
@@ -90,9 +91,9 @@ where
                             backgrounds: (
                                 match status {
                                     slider::Status::Active | slider::Status::Dragged => {
-                                        palette.background.strong.color
+                                        palette.background.strongest.color
                                     }
-                                    slider::Status::Hovered => palette.background.strongest.color,
+                                    slider::Status::Hovered => palette.background.stronger.color,
                                 }
                                 .into(),
                                 Color::TRANSPARENT.into(),
@@ -110,7 +111,7 @@ where
                 })
         )
         .style(|theme| container::Style::default()
-            .background(theme.extended_palette().background.weakest.color)
+            .background(theme.extended_palette().background.weak.color)
             .border(border::rounded(2))),
         row![
             text(label).size(14).style(|theme: &core::Theme| {
