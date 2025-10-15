@@ -19,7 +19,7 @@ pub use dynamic_text::DynamicText;
 use crate::core;
 use crate::core::border;
 use crate::core::{Alignment, Color, Element, Length};
-use iced_widget::{container, horizontal_space, row, slider, stack, text};
+use iced_widget::{container, row, slider, space, stack, text};
 
 use std::ops::RangeInclusive;
 
@@ -119,7 +119,7 @@ where
                     color: Some(theme.extended_palette().background.weak.text),
                 }
             }),
-            horizontal_space(),
+            space::horizontal(),
             text(to_string(&current)).size(14)
         ]
         .padding([0, 10])
