@@ -7,7 +7,7 @@ use function::Binary;
 
 fn main() -> iced::Result {
     iced::application(Example::new, Example::update, Example::view)
-        .theme(|_| Theme::CatppuccinMacchiato)
+        .theme(Theme::CatppuccinMocha)
         .run()
 }
 

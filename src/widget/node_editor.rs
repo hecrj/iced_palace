@@ -114,8 +114,8 @@ impl<'a, T> Interface<'a, T> {
                 vec![Tree::new(&self.content)]
             }
 
-            fn diff(&mut self, tree: &mut Tree) {
-                tree.diff_children(std::slice::from_mut(&mut self.content));
+            fn diff(&self, tree: &mut Tree) {
+                tree.diff_children(std::slice::from_ref(&self.content));
             }
 
             fn size(&self) -> Size<Length> {
@@ -582,8 +582,8 @@ where
         self.nodes.iter().map(Tree::new).collect()
     }
 
-    fn diff(&mut self, tree: &mut Tree) {
-        tree.diff_children(&mut self.nodes);
+    fn diff(&self, tree: &mut Tree) {
+        tree.diff_children(&self.nodes);
     }
 
     fn size(&self) -> Size<Length> {

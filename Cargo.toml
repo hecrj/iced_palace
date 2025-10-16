@@ -16,12 +16,11 @@ node-editor = ["geometry", "dep:indexmap"]
 
 [dependencies]
 iced_core.workspace = true
+iced_widget.workspace = true
+num-traits.workspace = true
 
 iced_palace_macros.workspace = true
 iced_palace_macros.optional = true
-
-iced_widget.workspace = true
-iced_widget.optional = true
 
 indexmap.workspace = true
 indexmap.optional = true
@@ -56,6 +55,7 @@ iced_widget = "0.14.0-dev"
 
 function = "0.2"
 indexmap = "2"
+num-traits = "0.2"
 quote = "1"
 syn = "2"
 
