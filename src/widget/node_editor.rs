@@ -1444,6 +1444,12 @@ where
         self.nodes.get(&node).map(|node| &node.state)
     }
 
+    pub fn iter(&self) -> impl Iterator<Item = (Node, &T)> {
+        self.nodes
+            .iter()
+            .map(|(node, State { state, .. })| (*node, state))
+    }
+
     pub fn update<O>(&mut self, node: Node, f: impl FnOnce(&mut T, Data<'_>) -> O) -> O
     where
         O: Default,
