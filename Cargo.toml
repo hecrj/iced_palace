@@ -32,7 +32,7 @@ members = [
 ]
 
 [workspace.package]
-version = "0.14.0-dev"
+version = "0.14.0"
 authors = ["Héctor Ramón Jiménez <hector@hecrj.dev>"]
 edition = "2024"
 license = "MIT"
@@ -45,9 +45,9 @@ rust-version = "1.85"
 iced_palace = { path = "." }
 iced_palace_macros = { path = "./macros" }
 
-iced = "0.14.0-dev"
-iced_core = "0.14.0-dev"
-iced_widget = "0.14.0-dev"
+iced = "0.14"
+iced_core = "0.14"
+iced_widget = "0.14"
 
 num-traits = "0.2"
 quote = "1"
@@ -55,11 +55,6 @@ syn = "2"
 
 rand.version = "0.9"
 rand.default-features = false
-
-[patch.crates-io]
-iced.git = "https://github.com/iced-rs/iced.git"
-iced_core.git = "https://github.com/iced-rs/iced.git"
-iced_widget.git = "https://github.com/iced-rs/iced.git"
 
 # For testing new bleeding edge iced features
 # iced.path = "../../iced"
