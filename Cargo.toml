@@ -42,8 +42,8 @@ keywords = ["gui", "ui", "graphics", "interface", "widgets"]
 rust-version = "1.85"
 
 [workspace.dependencies]
-iced_palace = { path = "." }
-iced_palace_macros = { path = "./macros" }
+iced_palace = { version = "0.14", path = "." }
+iced_palace_macros = { version = "0.14", path = "./macros" }
 
 iced = "0.14"
 iced_core = "0.14"
