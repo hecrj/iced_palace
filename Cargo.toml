@@ -32,7 +32,7 @@ members = [
 ]
 
 [workspace.package]
-version = "0.14.0"
+version = "0.15.0-dev"
 authors = ["Héctor Ramón Jiménez <hector@hecrj.dev>"]
 edition = "2024"
 license = "MIT"
@@ -42,12 +42,12 @@ keywords = ["gui", "ui", "graphics", "interface", "widgets"]
 rust-version = "1.85"
 
 [workspace.dependencies]
-iced_palace = { version = "0.14", path = "." }
-iced_palace_macros = { version = "0.14", path = "./macros" }
+iced_palace = { version = "0.15.0-dev", path = "." }
+iced_palace_macros = { version = "0.15.0-dev", path = "./macros" }
 
-iced = "0.14"
-iced_core = "0.14"
-iced_widget = "0.14"
+iced = "0.15.0-dev"
+iced_core = "0.15.0-dev"
+iced_widget = "0.15.0-dev"
 
 num-traits = "0.2"
 quote = "1"
@@ -55,6 +55,16 @@ syn = "2"
 
 rand.version = "0.9"
 rand.default-features = false
+
+[patch.crates-io]
+iced.git = "https://github.com/iced-rs/iced.git"
+iced.rev = "8f35374021964a2715f8a2ca3a22b5c9b39d09f9"
+
+iced_core.git = "https://github.com/iced-rs/iced.git"
+iced_core.rev = "8f35374021964a2715f8a2ca3a22b5c9b39d09f9"
+
+iced_widget.git = "https://github.com/iced-rs/iced.git"
+iced_widget.rev = "8f35374021964a2715f8a2ca3a22b5c9b39d09f9"
 
 # For testing new bleeding edge iced features
 # iced.path = "../../iced"

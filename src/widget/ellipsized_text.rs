@@ -165,6 +165,7 @@ where
                 align_y: format.align_y,
                 shaping: format.shaping,
                 wrapping: format.wrapping,
+                hint_factor: renderer.scale_factor(),
             });
 
             if changed {
@@ -178,6 +179,7 @@ where
                     wrapping: text::Wrapping::None,
                     align_x: text::Alignment::Left,
                     align_y: alignment::Vertical::Center,
+                    hint_factor: renderer.scale_factor(),
                 });
 
                 let min_bounds = state.original.min_bounds().min(bounds);
@@ -212,6 +214,7 @@ where
                             align_y: format.align_y,
                             shaping: format.shaping,
                             wrapping: format.wrapping,
+                            hint_factor: renderer.scale_factor(),
                         });
                     }
                     _ => {

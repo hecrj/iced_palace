@@ -321,9 +321,9 @@ dependencies = [
 
 [[package]]
 name = "bumpalo"
-version = "3.19.0"
+version = "3.19.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "46c5e41b57b8bba42a04676d81cb89e9ee8e859a1a66f80a5a72e1cb76b34d43"
+checksum = "5dd9dc738b7a8311c7ade152424974d8115f2cdad61e8dab8dac9f2362298510"
 
 [[package]]
 name = "bytemuck"
@@ -463,11 +463,11 @@ dependencies = [
 
 [[package]]
 name = "clipboard_x11"
-version = "0.4.2"
+version = "0.4.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4274ea815e013e0f9f04a2633423e14194e408a0576c943ce3d14ca56c50031c"
+checksum = "bd63e33452ffdafd39924c4f05a5dd1e94db646c779c6bd59148a3d95fff5ad4"
 dependencies = [
- "thiserror 1.0.69",
+ "thiserror 2.0.17",
  "x11rb",
 ]
 
@@ -541,19 +541,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "core-graphics"
-version = "0.24.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "fa95a34622365fa5bbf40b20b75dba8dfa8c94c734aea8ac9a5ca38af14316f1"
-dependencies = [
- "bitflags 2.10.0",
- "core-foundation 0.10.1",
- "core-graphics-types 0.2.0",
- "foreign-types",
- "libc",
-]
-
-[[package]]
 name = "core-graphics-types"
 version = "0.1.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -587,8 +574,7 @@ dependencies = [
 [[package]]
 name = "cosmic-text"
 version = "0.15.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "173852283a9a57a3cbe365d86e74dc428a09c50421477d5ad6fe9d9509e37737"
+source = "git+https://github.com/pop-os/cosmic-text.git?rev=a07a6190548c8e40a55f6b7761387047ff1bf6ff#a07a6190548c8e40a55f6b7761387047ff1bf6ff"
 dependencies = [
  "bitflags 2.10.0",
  "fontdb",
@@ -623,8 +609,7 @@ checksum = "460fbee9c2c2f33933d720630a6a0bac33ba7053db5344fac858d4b8952d77d5"
 [[package]]
 name = "cryoglyph"
 version = "0.1.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "08bc795bdbccdbd461736fb163930a009da6597b226d6f6fce33e7a8eb6ec519"
+source = "git+https://github.com/iced-rs/cryoglyph.git?rev=89883bcf38b5bed0d7bade788ef738d9facc857c#89883bcf38b5bed0d7bade788ef738d9facc857c"
 dependencies = [
  "cosmic-text",
  "etagere",
@@ -695,9 +680,8 @@ checksum = "75b325c5dbd37f80359721ad39aca5a29fb04c89279657cffdda8736d0c0b9d2"
 
 [[package]]
 name = "dpi"
-version = "0.1.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d8b14ccef22fc6f5a8f4d7d768562a182c04ce9a3b3157b91390b52ddfdf1a76"
+version = "0.1.1"
+source = "git+https://github.com/iced-rs/winit.git?rev=05b8ff17a06562f0a10bb46e6eaacbe2a95cb5ed#05b8ff17a06562f0a10bb46e6eaacbe2a95cb5ed"
 
 [[package]]
 name = "dynamic_text"
@@ -1180,9 +1164,8 @@ checksum = "dfa686283ad6dd069f105e5ab091b04c62850d3e4cf5d67debad1933f55023df"
 
 [[package]]
 name = "iced"
-version = "0.14.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "000e01026c93ba643f8357a3db3ada0e6555265a377f6f9291c472f6dd701fb3"
+version = "0.15.0-dev"
+source = "git+https://github.com/iced-rs/iced.git?rev=8f35374021964a2715f8a2ca3a22b5c9b39d09f9#8f35374021964a2715f8a2ca3a22b5c9b39d09f9"
 dependencies = [
  "iced_core",
  "iced_debug",
@@ -1197,9 +1180,8 @@ dependencies = [
 
 [[package]]
 name = "iced_beacon"
-version = "0.14.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "02a48f970444257a5e8b19def673f14f0d79c159fa851055e2a861683c3f8845"
+version = "0.15.0-dev"
+source = "git+https://github.com/iced-rs/iced.git?rev=8f35374021964a2715f8a2ca3a22b5c9b39d09f9#8f35374021964a2715f8a2ca3a22b5c9b39d09f9"
 dependencies = [
  "bincode",
  "futures",
@@ -1213,9 +1195,8 @@ dependencies = [
 
 [[package]]
 name = "iced_core"
-version = "0.14.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "91ab1937d699403e7e69252ae743a902bcee9f4ab2052cc4c9a46fcf34729d85"
+version = "0.15.0-dev"
+source = "git+https://github.com/iced-rs/iced.git?rev=8f35374021964a2715f8a2ca3a22b5c9b39d09f9#8f35374021964a2715f8a2ca3a22b5c9b39d09f9"
 dependencies = [
  "bitflags 2.10.0",
  "bytes",
@@ -1232,9 +1213,8 @@ dependencies = [
 
 [[package]]
 name = "iced_debug"
-version = "0.14.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "25035ab0215a620e53f4103e36fc4e59a1fb2817e4bfc38a30ad27b4202ea0be"
+version = "0.15.0-dev"
+source = "git+https://github.com/iced-rs/iced.git?rev=8f35374021964a2715f8a2ca3a22b5c9b39d09f9#8f35374021964a2715f8a2ca3a22b5c9b39d09f9"
 dependencies = [
  "iced_beacon",
  "iced_core",
@@ -1244,9 +1224,8 @@ dependencies = [
 
 [[package]]
 name = "iced_devtools"
-version = "0.14.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "59b8e2a306ac5c583234b02f5404afdb7b7467c8f72a4a44ad3e7be30fc4b339"
+version = "0.15.0-dev"
+source = "git+https://github.com/iced-rs/iced.git?rev=8f35374021964a2715f8a2ca3a22b5c9b39d09f9#8f35374021964a2715f8a2ca3a22b5c9b39d09f9"
 dependencies = [
  "iced_debug",
  "iced_program",
@@ -1256,9 +1235,8 @@ dependencies = [
 
 [[package]]
 name = "iced_futures"
-version = "0.14.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8c0c85ccad42dfbec7293c36c018af0ea0dbcc52d137a4a9a0b0f6822a3fdf0a"
+version = "0.15.0-dev"
+source = "git+https://github.com/iced-rs/iced.git?rev=8f35374021964a2715f8a2ca3a22b5c9b39d09f9#8f35374021964a2715f8a2ca3a22b5c9b39d09f9"
 dependencies = [
  "futures",
  "iced_core",
@@ -1270,9 +1248,8 @@ dependencies = [
 
 [[package]]
 name = "iced_graphics"
-version = "0.14.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "234ca1c2cec4155055f68fa5fad1b5242c496ac8238d80a259bca382fb44a102"
+version = "0.15.0-dev"
+source = "git+https://github.com/iced-rs/iced.git?rev=8f35374021964a2715f8a2ca3a22b5c9b39d09f9#8f35374021964a2715f8a2ca3a22b5c9b39d09f9"
 dependencies = [
  "bitflags 2.10.0",
  "bytemuck",
@@ -1290,7 +1267,7 @@ dependencies = [
 
 [[package]]
 name = "iced_palace"
-version = "0.14.0"
+version = "0.15.0-dev"
 dependencies = [
  "iced_core",
  "iced_palace_macros",
@@ -1301,7 +1278,7 @@ dependencies = [
 
 [[package]]
 name = "iced_palace_macros"
-version = "0.14.0"
+version = "0.15.0-dev"
 dependencies = [
  "quote",
  "syn",
@@ -1309,9 +1286,8 @@ dependencies = [
 
 [[package]]
 name = "iced_program"
-version = "0.14.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6dfafec2947cda688d8eb00dac337ba11aa60f9ef6335aed343e189d26e4a673"
+version = "0.15.0-dev"
+source = "git+https://github.com/iced-rs/iced.git?rev=8f35374021964a2715f8a2ca3a22b5c9b39d09f9#8f35374021964a2715f8a2ca3a22b5c9b39d09f9"
 dependencies = [
  "iced_graphics",
  "iced_runtime",
@@ -1319,9 +1295,8 @@ dependencies = [
 
 [[package]]
 name = "iced_renderer"
-version = "0.14.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "250cc0802408e8c077986ec56c7d07c65f423ee658a4b9fd795a1f2aae5dac05"
+version = "0.15.0-dev"
+source = "git+https://github.com/iced-rs/iced.git?rev=8f35374021964a2715f8a2ca3a22b5c9b39d09f9#8f35374021964a2715f8a2ca3a22b5c9b39d09f9"
 dependencies = [
  "iced_graphics",
  "iced_tiny_skia",
@@ -1332,9 +1307,8 @@ dependencies = [
 
 [[package]]
 name = "iced_runtime"
-version = "0.14.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d1889b819ce4c06674183242e336c8d49465665441396914dc07cc86f44fa8d4"
+version = "0.15.0-dev"
+source = "git+https://github.com/iced-rs/iced.git?rev=8f35374021964a2715f8a2ca3a22b5c9b39d09f9#8f35374021964a2715f8a2ca3a22b5c9b39d09f9"
 dependencies = [
  "bytes",
  "iced_core",
@@ -1345,9 +1319,8 @@ dependencies = [
 
 [[package]]
 name = "iced_tiny_skia"
-version = "0.14.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "fe0acf8b75a3bc914aff5f2329fdffc1b36eeaea29dda0e4bd232f1c62e9cc3d"
+version = "0.15.0-dev"
+source = "git+https://github.com/iced-rs/iced.git?rev=8f35374021964a2715f8a2ca3a22b5c9b39d09f9#8f35374021964a2715f8a2ca3a22b5c9b39d09f9"
 dependencies = [
  "bytemuck",
  "cosmic-text",
@@ -1362,9 +1335,8 @@ dependencies = [
 
 [[package]]
 name = "iced_wgpu"
-version = "0.14.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ff144a999b0ca0f8a10257934500060240825c42e950ec0ebee9c8ae30561c13"
+version = "0.15.0-dev"
+source = "git+https://github.com/iced-rs/iced.git?rev=8f35374021964a2715f8a2ca3a22b5c9b39d09f9#8f35374021964a2715f8a2ca3a22b5c9b39d09f9"
 dependencies = [
  "bitflags 2.10.0",
  "bytemuck",
@@ -1383,9 +1355,8 @@ dependencies = [
 
 [[package]]
 name = "iced_widget"
-version = "0.14.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f86f6948998a5e031849afae1bb852f3b100c71572befa0be70b19075dcb2163"
+version = "0.15.0-dev"
+source = "git+https://github.com/iced-rs/iced.git?rev=8f35374021964a2715f8a2ca3a22b5c9b39d09f9#8f35374021964a2715f8a2ca3a22b5c9b39d09f9"
 dependencies = [
  "iced_renderer",
  "log",
@@ -1397,9 +1368,8 @@ dependencies = [
 
 [[package]]
 name = "iced_winit"
-version = "0.14.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8b7dbedc47562d1de3b9707d939f678b88c382004b7ab5a18f7a7dd723162d75"
+version = "0.15.0-dev"
+source = "git+https://github.com/iced-rs/iced.git?rev=8f35374021964a2715f8a2ca3a22b5c9b39d09f9#8f35374021964a2715f8a2ca3a22b5c9b39d09f9"
 dependencies = [
  "iced_debug",
  "iced_program",
@@ -1517,13 +1487,13 @@ checksum = "f9fbbcab51052fe104eb5e5d351cf728d30a5be1fe14d9be8a3b097481fb97de"
 
 [[package]]
 name = "libredox"
-version = "0.1.10"
+version = "0.1.11"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "416f7e718bdb06000964960ffa43b4335ad4012ae8b99060261aa4a8088d5ccb"
+checksum = "df15f6eac291ed1cf25865b1ee60399f57e7c227e7f51bdbd4c5270396a9ed50"
 dependencies = [
  "bitflags 2.10.0",
  "libc",
- "redox_syscall 0.5.18",
+ "redox_syscall 0.6.0",
 ]
 
 [[package]]
@@ -2127,6 +2097,7 @@ checksum = "96c1358452b371bf9f104e21ec536d37a650eb10f7ee379fff67d2e08d537f1f"
 dependencies = [
  "bitflags 2.10.0",
  "objc2 0.6.3",
+ "objc2-core-foundation",
  "objc2-foundation 0.3.2",
 ]
 
@@ -2487,6 +2458,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "redox_syscall"
+version = "0.6.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ec96166dafa0886eb81fe1c0a388bece180fbef2135f97c1e2cf8302e74b43b5"
+dependencies = [
+ "bitflags 2.10.0",
+]
+
+[[package]]
 name = "renderdoc-sys"
 version = "1.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2763,32 +2743,32 @@ dependencies = [
 
 [[package]]
 name = "softbuffer"
-version = "0.4.6"
+version = "0.4.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "18051cdd562e792cad055119e0cdb2cfc137e44e3987532e0f9659a77931bb08"
+checksum = "aac18da81ebbf05109ab275b157c22a653bb3c12cf884450179942f81bcbf6c3"
 dependencies = [
  "as-raw-xcb-connection",
  "bytemuck",
- "cfg_aliases",
- "core-graphics 0.24.0",
  "fastrand",
- "foreign-types",
  "js-sys",
- "log",
  "memmap2",
- "objc2 0.5.2",
- "objc2-foundation 0.2.2",
- "objc2-quartz-core 0.2.2",
+ "ndk",
+ "objc2 0.6.3",
+ "objc2-core-foundation",
+ "objc2-core-graphics",
+ "objc2-foundation 0.3.2",
+ "objc2-quartz-core 0.3.2",
  "raw-window-handle",
  "redox_syscall 0.5.18",
- "rustix 0.38.44",
+ "rustix 1.1.2",
  "tiny-xlib",
+ "tracing",
  "wasm-bindgen",
  "wayland-backend",
  "wayland-client",
  "wayland-sys",
  "web-sys",
- "windows-sys 0.59.0",
+ "windows-sys 0.61.2",
  "x11rb",
 ]
 
@@ -2993,18 +2973,18 @@ dependencies = [
 
 [[package]]
 name = "toml_datetime"
-version = "0.7.3"
+version = "0.7.5+spec-1.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f2cdb639ebbc97961c51720f858597f7f24c4fc295327923af55b74c3c724533"
+checksum = "92e1cfed4a3038bc5a127e35a2d360f145e1f4b971b551a2ba5fd7aedf7e1347"
 dependencies = [
  "serde_core",
 ]
 
 [[package]]
 name = "toml_edit"
-version = "0.23.9"
+version = "0.23.10+spec-1.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5d7cbc3b4b49633d57a0509303158ca50de80ae32c265093b24c414705807832"
+checksum = "84c8b9f757e028cee9fa244aea147aab2a9ec09d5325a9b01e0a49730c2b5269"
 dependencies = [
  "indexmap",
  "toml_datetime",
@@ -3014,18 +2994,18 @@ dependencies = [
 
 [[package]]
 name = "toml_parser"
-version = "1.0.4"
+version = "1.0.6+spec-1.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c0cbe268d35bdb4bb5a56a2de88d0ad0eb70af5384a99d648cd4b3d04039800e"
+checksum = "a3198b4b0a8e11f09dd03e133c0280504d0801269e9afa46362ffde1cbeebf44"
 dependencies = [
  "winnow",
 ]
 
 [[package]]
 name = "tracing"
-version = "0.1.43"
+version = "0.1.44"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2d15d90a0b5c19378952d479dc858407149d7bb45a14de0142f6c534b16fc647"
+checksum = "63e71662fa4b2a2c3a26f570f037eb95bb1f85397f3cd8076caed2f026a6d100"
 dependencies = [
  "log",
  "pin-project-lite",
@@ -3046,9 +3026,9 @@ dependencies = [
 
 [[package]]
 name = "tracing-core"
-version = "0.1.35"
+version = "0.1.36"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7a04e24fab5c89c6a36eb8558c9656f30d81de51dfa4d3b45f26b21d61fa0a6c"
+checksum = "db97caf9d906fbde555dd62fa95ddba9eecfd14cb388e4f491a66d74cd5fb79a"
 dependencies = [
  "once_cell",
 ]
@@ -3570,16 +3550,16 @@ checksum = "712e227841d057c1ee1cd2fb22fa7e5a5461ae8e48fa2ca79ec42cfc1931183f"
 
 [[package]]
 name = "window_clipboard"
-version = "0.5.0"
+version = "0.5.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5793d0b08c9e6a1240fe9ab2bd8db277487bf92436fd1a6321861a90a1b0cb7e"
+checksum = "d5654226305eaf2dde8853fb482861d28e5dcecbbd40cb88e8393d94bb80d733"
 dependencies = [
  "clipboard-win",
  "clipboard_macos",
  "clipboard_wayland",
  "clipboard_x11",
  "raw-window-handle",
- "thiserror 1.0.69",
+ "thiserror 2.0.17",
 ]
 
 [[package]]
@@ -3989,9 +3969,8 @@ checksum = "d6bbff5f0aada427a1e5a6da5f1f98158182f26556f345ac9e04d36d0ebed650"
 
 [[package]]
 name = "winit"
-version = "0.30.12"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c66d4b9ed69c4009f6321f762d6e61ad8a2389cd431b97cb1e146812e9e6c732"
+version = "0.30.8"
+source = "git+https://github.com/iced-rs/winit.git?rev=05b8ff17a06562f0a10bb46e6eaacbe2a95cb5ed#05b8ff17a06562f0a10bb46e6eaacbe2a95cb5ed"
 dependencies = [
  "ahash",
  "android-activity",
@@ -4003,7 +3982,7 @@ dependencies = [
  "cfg_aliases",
  "concurrent-queue",
  "core-foundation 0.9.4",
- "core-graphics 0.23.2",
+ "core-graphics",
  "cursor-icon",
  "dpi",
  "js-sys",
