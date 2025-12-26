@@ -938,9 +938,10 @@ where
         renderer.start_layer(viewport);
 
         for node in self.state.nodes.values() {
-            let geometry = node
-                .links
-                .draw_with_bounds(renderer, Rectangle::INFINITE, |frame| {
+            let geometry = node.links.draw_with_bounds(
+                renderer,
+                Rectangle::new(Point::ORIGIN, Size::INFINITE),
+                |frame| {
                     for input in &node.inputs {
                         let Some(output) = self.state.links.get(input) else {
                             continue;
@@ -959,7 +960,8 @@ where
 
                         draw_connection(frame, start, end);
                     }
-                });
+                },
+            );
 
             renderer.draw_geometry(geometry);
         }
@@ -970,7 +972,10 @@ where
                 let connection = self.connection(layout, cursor, state, connector);
 
                 if let Some(connection) = connection {
-                    let mut frame = canvas::Frame::with_bounds(renderer, Rectangle::INFINITE);
+                    let mut frame = canvas::Frame::with_bounds(
+                        renderer,
+                        Rectangle::new(Point::ORIGIN, Size::INFINITE),
+                    );
 
                     draw_connection(&mut frame, connection.start, connection.end);
 
