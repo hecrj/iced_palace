@@ -185,6 +185,7 @@ where
                 align_y: self.align_y,
                 shaping: self.shaping,
                 wrapping: text::Wrapping::default(),
+                hint_factor: None,
             });
 
             if changed {

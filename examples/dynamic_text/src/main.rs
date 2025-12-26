@@ -70,11 +70,25 @@ impl Example {
     }
 
     fn subscription(&self) -> Subscription<Message> {
-        keyboard::on_key_press(|key, _modifiers| match key {
-            keyboard::Key::Named(keyboard::key::Named::Space) => Some(Message::ToggleGeometry),
-            _ => None,
-        })
-        .with(self.use_geometry)
-        .map(|(use_geometry, f)| f(!use_geometry))
+        keyboard::listen()
+            .filter_map(|event| {
+                let keyboard::Event::KeyPressed {
+                    modified_key,
+                    repeat: false,
+                    ..
+                } = event
+                else {
+                    return None;
+                };
+
+                match modified_key {
+                    keyboard::Key::Named(keyboard::key::Named::Space) => {
+                        Some(Message::ToggleGeometry)
+                    }
+                    _ => None,
+                }
+            })
+            .with(self.use_geometry)
+            .map(|(use_geometry, f)| f(!use_geometry))
     }
 }
