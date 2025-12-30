@@ -1586,18 +1586,20 @@ where
                     continue;
                 };
 
-                let connection = candidate_node.inputs.iter().find(|input| {
-                    links
+                let mut is_connected = false;
+
+                for input in &candidate_node.inputs {
+                    if links
                         .get(input)
                         .is_some_and(|output| current_node.outputs.contains(output))
-                });
-
-                if let Some(connection) = connection {
-                    let _ = links.remove(connection);
-
-                    if candidate_node.is_root(&links) {
-                        pending.push(candidate);
+                    {
+                        let _ = links.remove(input);
+                        is_connected = true;
                     }
+                }
+
+                if is_connected && candidate_node.is_root(&links) {
+                    pending.push(candidate);
                 }
             }
         }
