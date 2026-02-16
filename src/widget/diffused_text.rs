@@ -10,7 +10,7 @@ use crate::core::widget::text::{Catalog, Format, Style, StyleFn};
 use crate::core::widget::tree::{self, Tree};
 use crate::core::window;
 use crate::core::{
-    Alignment, Clipboard, Color, Element, Event, Length, Pixels, Rectangle, Shell, Size, Widget,
+    Alignment, Color, Element, Event, Length, Pixels, Rectangle, Shell, Size, Widget,
 };
 
 #[derive(Debug)]
@@ -240,7 +240,6 @@ where
         layout: Layout<'_>,
         _cursor: mouse::Cursor,
         _renderer: &Renderer,
-        _clipboard: &mut dyn Clipboard,
         shell: &mut Shell<'_, Message>,
         viewport: &Rectangle,
     ) {

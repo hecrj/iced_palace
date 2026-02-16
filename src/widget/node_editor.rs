@@ -8,8 +8,7 @@ use crate::core::renderer;
 use crate::core::widget::tree::{self, Tree};
 use crate::core::window;
 use crate::core::{
-    Clipboard, Color, Element, Event, Length, Point, Rectangle, Shell, Size, Transformation,
-    Vector, Widget,
+    Color, Element, Event, Length, Point, Rectangle, Shell, Size, Transformation, Vector, Widget,
 };
 
 use iced_widget::canvas;
@@ -144,7 +143,6 @@ impl<'a, T> Interface<'a, T> {
                 layout: Layout<'_>,
                 cursor: mouse::Cursor,
                 _renderer: &Renderer,
-                _clipboard: &mut dyn Clipboard,
                 shell: &mut Shell<'_, Message>,
                 _viewport: &Rectangle,
             ) {
@@ -328,7 +326,6 @@ impl<'a> Connector<'a> {
                 layout: Layout<'_>,
                 cursor: mouse::Cursor,
                 _renderer: &Renderer,
-                _clipboard: &mut dyn Clipboard,
                 shell: &mut Shell<'_, Message>,
                 _viewport: &Rectangle,
             ) {
@@ -639,7 +636,6 @@ where
         layout: Layout<'_>,
         cursor: mouse::Cursor,
         renderer: &Renderer,
-        clipboard: &mut dyn Clipboard,
         shell: &mut Shell<'_, Message>,
         viewport: &Rectangle,
     ) {
@@ -670,7 +666,6 @@ where
                 layout,
                 cursor_node,
                 renderer,
-                clipboard,
                 shell,
                 viewport,
             );
@@ -1118,7 +1113,6 @@ where
         layout: Layout<'_>,
         cursor: mouse::Cursor,
         renderer: &Renderer,
-        clipboard: &mut dyn Clipboard,
         shell: &mut Shell<'_, Message>,
     ) {
         self.content.as_overlay_mut().update(
@@ -1126,7 +1120,6 @@ where
             layout,
             cursor * self.transformation.inverse(),
             renderer,
-            clipboard,
             shell,
         );
     }
