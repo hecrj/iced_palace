@@ -6,6 +6,9 @@ mod diffused_text;
 #[cfg(feature = "geometry")]
 mod dynamic_text;
 
+#[cfg(feature = "webview")]
+pub mod webview;
+
 pub use typewriter::Typewriter;
 
 #[cfg(feature = "rand")]
@@ -13,6 +16,9 @@ pub use diffused_text::DiffusedText;
 
 #[cfg(feature = "geometry")]
 pub use dynamic_text::DynamicText;
+
+#[cfg(feature = "webview")]
+pub use webview::Webview;
 
 use crate::core;
 use crate::core::border;
@@ -51,6 +57,11 @@ where
     Renderer: core::text::Renderer + iced_widget::graphics::geometry::Renderer,
 {
     DynamicText::new(fragment)
+}
+
+#[cfg(feature = "webview")]
+pub fn webview(url: impl Into<webview::Url>) -> Webview {
+    Webview::new(url)
 }
 
 pub fn labeled_slider<'a, T, Message, Renderer>(

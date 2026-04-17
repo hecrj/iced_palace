@@ -12,6 +12,7 @@ keywords.workspace = true
 [features]
 geometry = ["iced_widget/canvas"]
 macros = ["iced_palace_macros"]
+webview = ["wry"]
 
 [dependencies]
 iced_core.workspace = true
@@ -24,6 +25,9 @@ iced_palace_macros.optional = true
 rand.workspace = true
 rand.features = ["thread_rng"]
 rand.optional = true
+
+wry.workspace = true
+wry.optional = true
 
 [workspace]
 members = [
@@ -52,19 +56,20 @@ iced_widget = "0.15.0-dev"
 num-traits = "0.2"
 quote = "1"
 syn = "2"
+wry = "0.55"
 
 rand.version = "0.9"
 rand.default-features = false
 
 [patch.crates-io]
 iced.git = "https://github.com/iced-rs/iced.git"
-iced.rev = "ac1b2c7123ad82643482c0b3a4a776246c966697"
+iced.rev = "26f99bbdc409496c8c078a32ba72b7271d42a3ba"
 
 iced_core.git = "https://github.com/iced-rs/iced.git"
-iced_core.rev = "ac1b2c7123ad82643482c0b3a4a776246c966697"
+iced_core.rev = "26f99bbdc409496c8c078a32ba72b7271d42a3ba"
 
 iced_widget.git = "https://github.com/iced-rs/iced.git"
-iced_widget.rev = "ac1b2c7123ad82643482c0b3a4a776246c966697"
+iced_widget.rev = "26f99bbdc409496c8c078a32ba72b7271d42a3ba"
 
 # For testing new bleeding edge iced features
 # iced.path = "../../iced"
