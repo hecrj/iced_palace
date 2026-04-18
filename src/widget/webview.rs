@@ -5,6 +5,11 @@ use crate::core::widget;
 use crate::core::window;
 use crate::core::{Element, Event, Layout, Length, Rectangle, Shell, Size, Widget};
 
+#[cfg(target_os = "macos")]
+use std::cell::Cell;
+#[cfg(target_os = "macos")]
+use std::rc::Rc;
+
 pub struct Webview {
     url: Url,
     width: Length,
@@ -38,6 +43,10 @@ enum State {
     Ready {
         webview: wry::WebView,
         bounds: Rectangle,
+        #[cfg(target_os = "macos")]
+        cursor: Rc<Cell<Option<String>>>,
+        #[cfg(target_os = "macos")]
+        interaction: mouse::Interaction,
     },
 }
 
@@ -88,16 +97,41 @@ where
         if let Event::Window(window::Event::RedrawRequested(_)) = event {
             let state = tree.state.downcast_mut::<State>();
 
-            let State::Ready { webview, bounds } = state else {
+            let State::Ready {
+                webview, bounds, ..
+            } = state
+            else {
                 let bounds = layout.bounds();
+                #[cfg(target_os = "macos")]
+                let cursor = Rc::new(Cell::new(None));
 
                 let webview = wry::WebViewBuilder::new()
                     .with_url(&self.url)
-                    .with_bounds(into_rect(bounds))
+                    .with_bounds(into_rect(bounds));
+
+                #[cfg(target_os = "macos")]
+                let webview = webview
+                    .with_initialization_script(CURSOR_TRACKING)
+                    .with_ipc_handler({
+                        let cursor = cursor.clone();
+
+                        move |request| {
+                            let _ = cursor.replace(Some(request.body().to_owned()));
+                        }
+                    });
+
+                let webview = webview
                     .build_as_child(&shell.window())
                     .expect("start webview");
 
-                *state = State::Ready { webview, bounds };
+                *state = State::Ready {
+                    webview,
+                    bounds,
+                    #[cfg(target_os = "macos")]
+                    cursor,
+                    #[cfg(target_os = "macos")]
+                    interaction: mouse::Interaction::None,
+                };
 
                 return;
             };
@@ -107,6 +141,27 @@ where
             if *bounds != new_bounds {
                 let _ = webview.set_bounds(into_rect(new_bounds));
                 *bounds = new_bounds;
+            }
+        }
+
+        #[cfg(target_os = "macos")]
+        if let Event::Mouse(_) = event {
+            let state = tree.state.downcast_mut::<State>();
+
+            let State::Ready {
+                cursor,
+                interaction,
+                ..
+            } = state
+            else {
+                return;
+            };
+
+            if let Some(cursor) = cursor.take() {
+                *interaction = match cursor.as_str() {
+                    "pointer" => mouse::Interaction::Pointer,
+                    _ => mouse::Interaction::None,
+                };
             }
         }
     }
@@ -123,6 +178,31 @@ where
     ) {
         // This is a no-op.
         // `wry` handles drawing for us in a child window
+    }
+
+    fn mouse_interaction(
+        &self,
+        _tree: &widget::Tree,
+        _layout: Layout<'_>,
+        _cursor: mouse::Cursor,
+        _viewport: &Rectangle,
+        _renderer: &Renderer,
+    ) -> mouse::Interaction {
+        #[cfg(target_os = "macos")]
+        {
+            if !_cursor.is_over(_layout.bounds()) {
+                return mouse::Interaction::None;
+            }
+
+            let State::Ready { interaction, .. } = _tree.state.downcast_ref::<State>() else {
+                return mouse::Interaction::None;
+            };
+
+            *interaction
+        }
+
+        #[cfg(not(target_os = "macos"))]
+        mouse::Interaction::None
     }
 }
 
@@ -147,3 +227,31 @@ fn into_rect(bounds: Rectangle) -> wry::Rect {
         )),
     }
 }
+
+#[cfg(target_os = "macos")]
+const CURSOR_TRACKING: &str = r#"
+function getEffectiveCursor(el) {
+    let current = el;
+
+    while (current) {
+        // Explicit link detection
+        if (current.closest && current.closest("a[href]")) {
+            return "pointer";
+        }
+
+        const style = getComputedStyle(current);
+        if (style.cursor && style.cursor !== "auto") {
+            return style.cursor;
+        }
+
+        current = current.parentElement;
+    }
+
+    return "default";
+}
+
+document.addEventListener("mouseover", (e) => {
+    const cursor = getEffectiveCursor(e.target);
+    window.ipc.postMessage(cursor);
+});
+"#;

@@ -9,7 +9,7 @@ fn main() -> iced::Result {
 #[derive(Default)]
 struct Example;
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 enum Message {}
 
 impl Example {
@@ -20,7 +20,7 @@ impl Example {
     fn view(&self) -> Element<'_, Message> {
         column![
             text("webview widget!").font(Font::MONOSPACE),
-            webview("https://google.com/")
+            webview("https://iced.rs")
         ]
         .spacing(20)
         .padding(20)
