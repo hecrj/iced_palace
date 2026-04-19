@@ -10,17 +10,23 @@ fn main() -> iced::Result {
 struct Example;
 
 #[derive(Debug, Clone)]
-enum Message {}
+enum Message {
+    Loaded(webview::Url),
+}
 
 impl Example {
     fn update(&mut self, message: Message) {
-        match message {}
+        match message {
+            Message::Loaded(url) => println!("Loaded: {url}"),
+        }
     }
 
     fn view(&self) -> Element<'_, Message> {
         column![
             text("webview widget!").font(Font::MONOSPACE),
             webview("https://iced.rs")
+                .on_navigate(|url| url.contains("iced.rs"))
+                .on_load(Message::Loaded)
         ]
         .spacing(20)
         .padding(20)
