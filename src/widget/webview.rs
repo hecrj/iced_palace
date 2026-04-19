@@ -14,9 +14,16 @@ pub struct Webview {
     url: Url,
     width: Length,
     height: Length,
+    headers: header::Map,
 }
 
 pub type Url = String;
+
+pub mod header {
+    pub use wry::http::HeaderMap as Map;
+    pub use wry::http::HeaderName as Name;
+    pub use wry::http::HeaderValue as Value;
+}
 
 impl Webview {
     pub fn new(url: impl Into<Url>) -> Self {
@@ -24,6 +31,7 @@ impl Webview {
             url: url.into(),
             width: Length::Fill,
             height: Length::Fill,
+            headers: header::Map::default(),
         }
     }
 
@@ -36,12 +44,20 @@ impl Webview {
         self.height = height.into();
         self
     }
+
+    pub fn headers(mut self, headers: impl Into<header::Map>) -> Self {
+        self.headers = headers.into();
+        self
+    }
 }
 
+#[allow(clippy::large_enum_variant)]
 enum State {
     New,
     Ready {
         webview: wry::WebView,
+        url: Url,
+        headers: header::Map,
         bounds: Rectangle,
         #[cfg(target_os = "macos")]
         cursor: Rc<Cell<Option<String>>>,
@@ -97,50 +113,57 @@ where
         if let Event::Window(window::Event::RedrawRequested(_)) = event {
             let state = tree.state.downcast_mut::<State>();
 
-            let State::Ready {
-                webview, bounds, ..
-            } = state
-            else {
-                let bounds = layout.bounds();
-                #[cfg(target_os = "macos")]
-                let cursor = Rc::new(Cell::new(None));
-
-                let webview = wry::WebViewBuilder::new()
-                    .with_url(&self.url)
-                    .with_bounds(into_rect(bounds));
-
-                #[cfg(target_os = "macos")]
-                let webview = webview
-                    .with_initialization_script(CURSOR_TRACKING)
-                    .with_ipc_handler({
-                        let cursor = cursor.clone();
-
-                        move |request| {
-                            let _ = cursor.replace(Some(request.body().to_owned()));
-                        }
-                    });
-
-                let webview = webview
-                    .build_as_child(&shell.window())
-                    .expect("start webview");
-
-                *state = State::Ready {
+            match state {
+                State::Ready {
                     webview,
                     bounds,
+                    url,
+                    headers,
+                    ..
+                } if url == &self.url && headers == &self.headers => {
+                    let new_bounds = layout.bounds();
+
+                    if *bounds != new_bounds {
+                        let _ = webview.set_bounds(into_rect(new_bounds));
+                        *bounds = new_bounds;
+                    }
+                }
+                _ => {
+                    let bounds = layout.bounds();
                     #[cfg(target_os = "macos")]
-                    cursor,
+                    let cursor = Rc::new(Cell::new(None));
+
+                    let webview = wry::WebViewBuilder::new()
+                        .with_url(&self.url)
+                        .with_headers(self.headers.clone())
+                        .with_bounds(into_rect(bounds));
+
                     #[cfg(target_os = "macos")]
-                    interaction: mouse::Interaction::None,
-                };
+                    let webview = webview
+                        .with_initialization_script(CURSOR_TRACKING)
+                        .with_ipc_handler({
+                            let cursor = cursor.clone();
 
-                return;
-            };
+                            move |request| {
+                                let _ = cursor.replace(Some(request.body().to_owned()));
+                            }
+                        });
 
-            let new_bounds = layout.bounds();
+                    let webview = webview
+                        .build_as_child(&shell.window())
+                        .expect("start webview");
 
-            if *bounds != new_bounds {
-                let _ = webview.set_bounds(into_rect(new_bounds));
-                *bounds = new_bounds;
+                    *state = State::Ready {
+                        webview,
+                        url: self.url.clone(),
+                        headers: self.headers.clone(),
+                        bounds,
+                        #[cfg(target_os = "macos")]
+                        cursor,
+                        #[cfg(target_os = "macos")]
+                        interaction: mouse::Interaction::None,
+                    };
+                }
             }
         }
 
