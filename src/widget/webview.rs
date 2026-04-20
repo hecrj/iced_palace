@@ -229,6 +229,8 @@ where
             if let Some(cursor) = cursor.take() {
                 *interaction = match cursor.as_str() {
                     "pointer" => mouse::Interaction::Pointer,
+                    "ew-resize" => mouse::Interaction::ResizingHorizontally,
+                    "text" => mouse::Interaction::Text,
                     _ => mouse::Interaction::None,
                 };
             }
@@ -328,6 +330,10 @@ function getEffectiveCursor(el) {
         // Explicit link detection
         if (current.closest && current.closest("a[href]")) {
             return "pointer";
+        }
+
+        if (current.closest && current.closest("input")) {
+            return "text";
         }
 
         const style = getComputedStyle(current);
