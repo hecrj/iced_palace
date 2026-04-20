@@ -159,7 +159,7 @@ where
 
                     if self.on_load.is_some() {
                         let loads = loads.clone();
-                        let ticker = shell.ticker().clone();
+                        let waker = shell.waker().clone();
 
                         webview = webview.with_on_page_load_handler(move |event, url| {
                             let wry::PageLoadEvent::Finished = event else {
@@ -167,7 +167,7 @@ where
                             };
 
                             loads.borrow_mut().push(url);
-                            ticker.tick();
+                            waker.wake();
                         });
                     }
 
@@ -222,7 +222,7 @@ where
             }
         }
 
-        if let Event::Tick = event {
+        if let Event::Waken = event {
             let state = tree.state.downcast_mut::<State>();
 
             let State::Ready { loads, .. } = state else {
