@@ -11,16 +11,16 @@ use std::cell::Cell;
 use std::cell::RefCell;
 use std::rc::Rc;
 
+pub use url::Url;
+
 pub struct Webview<'a, Message> {
-    url: Url,
+    url: String,
     width: Length,
     height: Length,
     headers: header::Map,
     on_navigate: fn(Url) -> bool,
-    on_load: Option<Box<dyn Fn(Url) -> Message + 'a>>,
+    on_load: Option<Box<dyn Fn(Load) -> Message + 'a>>,
 }
-
-pub type Url = String;
 
 pub mod header {
     pub use wry::http::HeaderMap as Map;
@@ -29,7 +29,7 @@ pub mod header {
 }
 
 impl<'a, Message> Webview<'a, Message> {
-    pub fn new(url: impl Into<Url>) -> Self {
+    pub fn new(url: impl Into<String>) -> Self {
         Self {
             url: url.into(),
             width: Length::Fill,
@@ -60,7 +60,7 @@ impl<'a, Message> Webview<'a, Message> {
         self
     }
 
-    pub fn on_load(mut self, on_load: impl Fn(Url) -> Message + 'static) -> Self {
+    pub fn on_load(mut self, on_load: impl Fn(Load) -> Message + 'static) -> Self {
         self.on_load = Some(Box::new(on_load));
         self
     }
@@ -71,10 +71,10 @@ enum State {
     New,
     Ready {
         webview: wry::WebView,
-        url: Url,
+        url: String,
         headers: header::Map,
         bounds: Rectangle,
-        loads: Rc<RefCell<Vec<String>>>,
+        loads: Rc<RefCell<Vec<Load>>>,
         #[cfg(target_os = "macos")]
         cursor: Rc<Cell<Option<String>>>,
         #[cfg(target_os = "macos")]
@@ -151,10 +151,18 @@ where
                     #[cfg(target_os = "macos")]
                     let cursor = Rc::new(Cell::new(None));
 
+                    let on_navigate = self.on_navigate;
+
                     let mut webview = wry::WebViewBuilder::new()
                         .with_url(&self.url)
                         .with_headers(self.headers.clone())
-                        .with_navigation_handler(self.on_navigate)
+                        .with_navigation_handler(move |url| {
+                            let Ok(url) = Url::parse(&url) else {
+                                return false;
+                            };
+
+                            on_navigate(url)
+                        })
                         .with_bounds(into_rect(bounds));
 
                     if self.on_load.is_some() {
@@ -162,11 +170,15 @@ where
                         let waker = shell.waker().clone();
 
                         webview = webview.with_on_page_load_handler(move |event, url| {
-                            let wry::PageLoadEvent::Finished = event else {
+                            let Ok(url) = Url::parse(&url) else {
                                 return;
                             };
 
-                            loads.borrow_mut().push(url);
+                            loads.borrow_mut().push(match event {
+                                wry::PageLoadEvent::Started => Load::Started(url),
+                                wry::PageLoadEvent::Finished => Load::Finished(url),
+                            });
+
                             waker.wake();
                         });
                     }
@@ -230,8 +242,8 @@ where
             };
 
             if let Some(on_load) = &self.on_load {
-                for url in loads.borrow_mut().drain(..) {
-                    shell.publish(on_load(url));
+                for load in loads.borrow_mut().drain(..) {
+                    shell.publish(on_load(load));
                 }
             }
         }
@@ -299,6 +311,12 @@ fn into_rect(bounds: Rectangle) -> wry::Rect {
             f64::from(bounds.height),
         )),
     }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum Load {
+    Started(Url),
+    Finished(Url),
 }
 
 #[cfg(target_os = "macos")]

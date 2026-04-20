@@ -12,7 +12,7 @@ keywords.workspace = true
 [features]
 geometry = ["iced_widget/canvas"]
 macros = ["iced_palace_macros"]
-webview = ["wry"]
+webview = ["wry", "url"]
 
 [dependencies]
 iced_core.workspace = true
@@ -25,6 +25,9 @@ iced_palace_macros.optional = true
 rand.workspace = true
 rand.features = ["thread_rng"]
 rand.optional = true
+
+url.workspace = true
+url.optional = true
 
 wry.workspace = true
 wry.optional = true
@@ -56,6 +59,7 @@ iced_widget = "0.15.0-dev"
 num-traits = "0.2"
 quote = "1"
 syn = "2"
+url = "2.5"
 wry = "0.55"
 
 rand.version = "0.9"

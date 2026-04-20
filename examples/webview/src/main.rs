@@ -11,13 +11,15 @@ struct Example;
 
 #[derive(Debug, Clone)]
 enum Message {
-    Loaded(webview::Url),
+    Loaded(webview::Load),
 }
 
 impl Example {
     fn update(&mut self, message: Message) {
         match message {
-            Message::Loaded(url) => println!("Loaded: {url}"),
+            Message::Loaded(load) => {
+                dbg!(load);
+            }
         }
     }
 
@@ -25,11 +27,16 @@ impl Example {
         column![
             text("webview widget!").font(Font::MONOSPACE),
             webview("https://iced.rs")
-                .on_navigate(|url| url.contains("iced.rs"))
+                .on_navigate(is_trusted)
                 .on_load(Message::Loaded)
         ]
         .spacing(20)
         .padding(20)
         .into()
     }
+}
+
+fn is_trusted(url: webview::Url) -> bool {
+    url.domain()
+        .is_some_and(|domain| domain == "iced.rs" || domain.ends_with(".iced.rs"))
 }

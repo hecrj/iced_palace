@@ -60,7 +60,7 @@ where
 }
 
 #[cfg(feature = "webview")]
-pub fn webview<'a, Message>(url: impl Into<webview::Url>) -> Webview<'a, Message> {
+pub fn webview<'a, Message>(url: impl Into<String>) -> Webview<'a, Message> {
     Webview::new(url)
 }
 

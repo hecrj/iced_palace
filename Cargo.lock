@@ -1796,6 +1796,7 @@ dependencies = [
  "iced_widget",
  "num-traits",
  "rand",
+ "url",
  "wry",
 ]
 
