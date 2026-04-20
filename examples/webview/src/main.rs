@@ -1,5 +1,5 @@
 use iced::widget::{column, text};
-use iced::{Element, Font};
+use iced::{Element, Font, Task, never};
 use iced_palace::widget::webview;
 
 fn main() -> iced::Result {
@@ -12,13 +12,21 @@ struct Example;
 #[derive(Debug, Clone)]
 enum Message {
     Loaded(webview::Load),
+    Ran(String),
 }
 
 impl Example {
-    fn update(&mut self, message: Message) {
+    fn update(&mut self, message: Message) -> Task<Message> {
         match message {
             Message::Loaded(load) => {
                 dbg!(load);
+
+                webview::run("webview-example", "document.documentElement.outerHTML").map(never)
+            }
+            Message::Ran(result) => {
+                dbg!(result);
+
+                Task::none()
             }
         }
     }
@@ -27,8 +35,10 @@ impl Example {
         column![
             text("webview widget!").font(Font::MONOSPACE),
             webview("https://iced.rs")
+                .id("webview-example")
                 .on_navigate(is_trusted)
                 .on_load(Message::Loaded)
+                .on_run(Message::Ran)
         ]
         .spacing(20)
         .padding(20)

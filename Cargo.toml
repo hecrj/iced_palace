@@ -12,7 +12,7 @@ keywords.workspace = true
 [features]
 geometry = ["iced_widget/canvas"]
 macros = ["iced_palace_macros"]
-webview = ["wry", "url"]
+webview = ["iced_runtime", "wry", "url"]
 
 [dependencies]
 iced_core.workspace = true
@@ -21,6 +21,9 @@ num-traits.workspace = true
 
 iced_palace_macros.workspace = true
 iced_palace_macros.optional = true
+
+iced_runtime.workspace = true
+iced_runtime.optional = true
 
 rand.workspace = true
 rand.features = ["thread_rng"]
@@ -54,6 +57,7 @@ iced_palace_macros = { version = "0.15.0-dev", path = "./macros" }
 
 iced = "0.15.0-dev"
 iced_core = "0.15.0-dev"
+iced_runtime = "0.15.0-dev"
 iced_widget = "0.15.0-dev"
 
 num-traits = "0.2"
@@ -67,15 +71,19 @@ rand.default-features = false
 
 [patch.crates-io]
 iced.git = "https://github.com/iced-rs/iced.git"
-iced.rev = "1aceebf4703260908edf07f740ea5251549fa695"
+iced.rev = "cd386c381b03421a7fbc0d3e6fce71b3683ca41e"
 
 iced_core.git = "https://github.com/iced-rs/iced.git"
-iced_core.rev = "1aceebf4703260908edf07f740ea5251549fa695"
+iced_core.rev = "cd386c381b03421a7fbc0d3e6fce71b3683ca41e"
+
+iced_runtime.git = "https://github.com/iced-rs/iced.git"
+iced_runtime.rev = "cd386c381b03421a7fbc0d3e6fce71b3683ca41e"
 
 iced_widget.git = "https://github.com/iced-rs/iced.git"
-iced_widget.rev = "1aceebf4703260908edf07f740ea5251549fa695"
+iced_widget.rev = "cd386c381b03421a7fbc0d3e6fce71b3683ca41e"
 
 # For testing new bleeding edge iced features
 # iced.path = "../../iced"
 # iced_core.path = "../../iced/core"
+# iced_runtime.path = "../../iced/runtime"
 # iced_widget.path = "../../iced/widget"
