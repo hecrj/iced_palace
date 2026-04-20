@@ -1,5 +1,5 @@
 use iced::widget::{column, text};
-use iced::{Element, Font, Task, never};
+use iced::{Element, Font, Task};
 use iced_palace::widget::webview;
 
 fn main() -> iced::Result {
@@ -21,7 +21,8 @@ impl Example {
             Message::Loaded(load) => {
                 dbg!(load);
 
-                webview::run("webview-example", "document.documentElement.outerHTML").map(never)
+                webview::run("webview-example", "document.documentElement.outerHTML")
+                    .map(Message::Ran)
             }
             Message::Ran(result) => {
                 dbg!(result);
@@ -38,7 +39,6 @@ impl Example {
                 .id("webview-example")
                 .on_navigate(is_trusted)
                 .on_load(Message::Loaded)
-                .on_run(Message::Ran)
         ]
         .spacing(20)
         .padding(20)

@@ -1,12 +1,12 @@
 use crate::core::layout;
 use crate::core::mouse;
 use crate::core::renderer;
-use crate::core::shell;
 use crate::core::widget;
 use crate::core::window;
-use crate::core::{Element, Event, Layout, Length, Never, Rectangle, Shell, Size, Widget};
+use crate::core::{Element, Event, Layout, Length, Rectangle, Shell, Size, Widget};
 
 use iced_runtime::Task;
+use iced_runtime::futures::futures::channel::oneshot;
 use iced_runtime::task;
 
 #[cfg(target_os = "macos")]
@@ -14,7 +14,6 @@ use std::cell::Cell;
 
 use std::cell::RefCell;
 use std::rc::Rc;
-use std::sync::{Arc, Mutex};
 
 pub use url::Url;
 
@@ -25,7 +24,6 @@ pub struct Webview<'a, Message> {
     headers: header::Map,
     on_navigate: fn(Url) -> bool,
     on_load: Option<Box<dyn Fn(Load) -> Message + 'a>>,
-    on_run: Option<Box<dyn Fn(String) -> Message + 'a>>,
     id: Option<widget::Id>,
 }
 
@@ -44,7 +42,6 @@ impl<'a, Message> Webview<'a, Message> {
             headers: header::Map::default(),
             on_navigate: |_| true,
             on_load: None,
-            on_run: None,
             id: None,
         }
     }
@@ -78,11 +75,6 @@ impl<'a, Message> Webview<'a, Message> {
         self.on_load = Some(Box::new(on_load));
         self
     }
-
-    pub fn on_run(mut self, on_run: impl Fn(String) -> Message + 'a) -> Self {
-        self.on_run = Some(Box::new(on_run));
-        self
-    }
 }
 
 #[allow(clippy::large_enum_variant)]
@@ -94,8 +86,6 @@ enum State {
         headers: header::Map,
         bounds: Rectangle,
         loads: Rc<RefCell<Vec<Load>>>,
-        results: Arc<Mutex<Vec<String>>>,
-        waker: shell::Waker,
         #[cfg(target_os = "macos")]
         cursor: Rc<Cell<Option<String>>>,
         #[cfg(target_os = "macos")]
@@ -227,8 +217,6 @@ where
                         headers: self.headers.clone(),
                         bounds,
                         loads,
-                        results: Arc::new(Mutex::new(Vec::new())),
-                        waker: shell.waker().clone(),
                         #[cfg(target_os = "macos")]
                         cursor,
                         #[cfg(target_os = "macos")]
@@ -264,23 +252,13 @@ where
         if let Event::Waken = event {
             let state = tree.state.downcast_mut::<State>();
 
-            let State::Ready { results, loads, .. } = state else {
+            let State::Ready { loads, .. } = state else {
                 return;
             };
 
             if let Some(on_load) = &self.on_load {
                 for load in loads.borrow_mut().drain(..) {
                     shell.publish(on_load(load));
-                }
-            }
-
-            if let Some(on_run) = &self.on_run {
-                let Ok(mut results) = results.lock() else {
-                    return;
-                };
-
-                for result in results.drain(..) {
-                    shell.publish(on_run(result));
                 }
             }
         }
@@ -340,16 +318,16 @@ where
     }
 }
 
-pub fn run(target: impl Into<widget::Id>, javascript: impl Into<String>) -> Task<Never> {
+pub fn run(target: impl Into<widget::Id>, javascript: impl Into<String>) -> Task<String> {
     struct Run {
         target: widget::Id,
         javascript: String,
-        result: Option<String>,
+        sender: Option<oneshot::Sender<String>>,
     }
 
-    impl widget::Operation<Never> for Run {
-        fn traverse(&mut self, operate: &mut dyn FnMut(&mut dyn widget::Operation<Never>)) {
-            if self.result.is_none() {
+    impl<T> widget::Operation<T> for Run {
+        fn traverse(&mut self, operate: &mut dyn FnMut(&mut dyn widget::Operation<T>)) {
+            if self.sender.is_some() {
                 operate(self);
             }
         }
@@ -360,39 +338,49 @@ pub fn run(target: impl Into<widget::Id>, javascript: impl Into<String>) -> Task
             _bounds: Rectangle,
             state: &mut dyn std::any::Any,
         ) {
+            use std::sync::Mutex;
+
             if id != Some(&self.target) {
                 return;
             }
 
-            let Some(State::Ready {
-                webview,
-                results,
-                waker,
-                ..
-            }) = state.downcast_ref::<State>()
-            else {
+            let Some(State::Ready { webview, .. }) = state.downcast_ref::<State>() else {
                 return;
             };
 
-            let results = results.clone();
-            let waker = waker.clone();
+            let Some(sender) = self.sender.take() else {
+                return;
+            };
+
+            let sender = Mutex::new(Some(sender));
 
             let _ = webview.evaluate_script_with_callback(&self.javascript, move |result| {
-                let Ok(mut results) = results.lock() else {
+                let Some(sender) = sender.lock().ok().as_deref_mut().and_then(Option::take) else {
                     return;
                 };
 
-                results.push(result);
-                waker.wake();
+                let _ = sender.send(result);
             });
         }
     }
 
-    task::widget(Run {
+    let (sender, receiver) = oneshot::channel();
+
+    let run = task::widget(Run {
         target: target.into(),
         javascript: javascript.into(),
-        result: None,
-    })
+        sender: Some(sender),
+    });
+
+    let receive = Task::future(async move {
+        let Ok(result) = receiver.await else {
+            return String::new();
+        };
+
+        result
+    });
+
+    Task::batch([run, receive])
 }
 
 impl<'a, Message, Theme, Renderer> From<Webview<'a, Message>>
