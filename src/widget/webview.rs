@@ -9,6 +9,8 @@ use iced_runtime::Task;
 use iced_runtime::futures::futures::channel::oneshot;
 use iced_runtime::task;
 
+use std::borrow::Cow;
+
 #[cfg(target_os = "macos")]
 use std::cell::Cell;
 
@@ -18,7 +20,7 @@ use std::rc::Rc;
 pub use url::Url;
 
 pub struct Webview<'a, Message> {
-    url: String,
+    source: Source<'a>,
     width: Length,
     height: Length,
     headers: header::Map,
@@ -27,16 +29,47 @@ pub struct Webview<'a, Message> {
     id: Option<widget::Id>,
 }
 
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum Source<'a> {
+    Url(Cow<'a, str>),
+    Html(Cow<'a, str>),
+}
+
+impl Source<'_> {
+    fn to_static(&self) -> Source<'static> {
+        match self {
+            Source::Url(url) => Source::Url(Cow::Owned(url.clone().into_owned())),
+            Source::Html(html) => Source::Html(Cow::Owned(html.clone().into_owned())),
+        }
+    }
+}
+
+impl From<String> for Source<'_> {
+    fn from(url: String) -> Self {
+        Source::Url(url.into())
+    }
+}
+
+impl<'a> From<&'a str> for Source<'a> {
+    fn from(url: &'a str) -> Self {
+        Source::Url(Cow::Borrowed(url))
+    }
+}
+
 pub mod header {
     pub use wry::http::HeaderMap as Map;
     pub use wry::http::HeaderName as Name;
     pub use wry::http::HeaderValue as Value;
+
+    pub use wry::http::header::ORIGIN;
+    pub use wry::http::header::REFERER;
+    pub use wry::http::header::REFERRER_POLICY;
 }
 
 impl<'a, Message> Webview<'a, Message> {
-    pub fn new(url: impl Into<String>) -> Self {
+    pub fn new(source: impl Into<Source<'a>>) -> Self {
         Self {
-            url: url.into(),
+            source: source.into(),
             width: Length::Fill,
             height: Length::Fill,
             headers: header::Map::default(),
@@ -82,7 +115,7 @@ enum State {
     New,
     Ready {
         webview: wry::WebView,
-        url: String,
+        source: Source<'static>,
         headers: header::Map,
         bounds: Rectangle,
         loads: Rc<RefCell<Vec<Load>>>,
@@ -145,10 +178,10 @@ where
                 State::Ready {
                     webview,
                     bounds,
-                    url,
+                    source,
                     headers,
                     ..
-                } if url == &self.url && headers == &self.headers => {
+                } if *source == self.source && headers == &self.headers => {
                     let new_bounds = layout.bounds();
 
                     if *bounds != new_bounds {
@@ -162,8 +195,7 @@ where
                     #[cfg(target_os = "macos")]
                     let cursor = Rc::new(Cell::new(None));
 
-                    let mut webview = wry::WebViewBuilder::new()
-                        .with_url(&self.url)
+                    let webview = wry::WebViewBuilder::new()
                         .with_headers(self.headers.clone())
                         .with_navigation_handler({
                             let on_navigate = self.on_navigate;
@@ -177,6 +209,11 @@ where
                             }
                         })
                         .with_bounds(into_rect(bounds));
+
+                    let mut webview = match &self.source {
+                        Source::Url(url) => webview.with_url(url.clone()),
+                        Source::Html(html) => webview.with_html(html.clone()),
+                    };
 
                     if self.on_load.is_some() {
                         let loads = loads.clone();
@@ -213,7 +250,7 @@ where
 
                     *state = State::Ready {
                         webview,
-                        url: self.url.clone(),
+                        source: self.source.to_static(),
                         headers: self.headers.clone(),
                         bounds,
                         loads,

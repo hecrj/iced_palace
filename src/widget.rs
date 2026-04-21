@@ -60,8 +60,8 @@ where
 }
 
 #[cfg(feature = "webview")]
-pub fn webview<'a, Message>(url: impl Into<String>) -> Webview<'a, Message> {
-    Webview::new(url)
+pub fn webview<'a, Message>(source: impl Into<webview::Source<'a>>) -> Webview<'a, Message> {
+    Webview::new(source)
 }
 
 pub fn labeled_slider<'a, T, Message, Renderer>(
