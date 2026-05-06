@@ -27,6 +27,7 @@ pub struct Webview<'a, Message> {
     on_navigate: fn(Url) -> bool,
     on_load: Option<Box<dyn Fn(Load) -> Message + 'a>>,
     id: Option<widget::Id>,
+    user_agent: Option<String>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -76,6 +77,7 @@ impl<'a, Message> Webview<'a, Message> {
             on_navigate: |_| true,
             on_load: None,
             id: None,
+            user_agent: None,
         }
     }
 
@@ -99,6 +101,11 @@ impl<'a, Message> Webview<'a, Message> {
         self
     }
 
+    pub fn user_agent(mut self, user_agent: impl Into<String>) -> Self {
+        self.user_agent = Some(user_agent.into());
+        self
+    }
+
     pub fn on_navigate(mut self, on_navigate: fn(Url) -> bool) -> Self {
         self.on_navigate = on_navigate;
         self
@@ -117,6 +124,7 @@ enum State {
         webview: wry::WebView,
         source: Source<'static>,
         headers: header::Map,
+        user_agent: Option<String>,
         bounds: Rectangle,
         loads: Rc<RefCell<Vec<Load>>>,
         #[cfg(target_os = "macos")]
@@ -180,8 +188,12 @@ where
                     bounds,
                     source,
                     headers,
+                    user_agent,
                     ..
-                } if *source == self.source && headers == &self.headers => {
+                } if *source == self.source
+                    && headers == &self.headers
+                    && user_agent == &self.user_agent =>
+                {
                     let new_bounds = layout.bounds();
 
                     if *bounds != new_bounds {
@@ -233,6 +245,10 @@ where
                         });
                     }
 
+                    if let Some(user_agent) = &self.user_agent {
+                        webview = webview.with_user_agent(user_agent);
+                    }
+
                     #[cfg(target_os = "macos")]
                     let webview = webview
                         .with_initialization_script(CURSOR_TRACKING)
@@ -252,6 +268,7 @@ where
                         webview,
                         source: self.source.to_static(),
                         headers: self.headers.clone(),
+                        user_agent: self.user_agent.clone(),
                         bounds,
                         loads,
                         #[cfg(target_os = "macos")]
