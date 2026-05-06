@@ -27,7 +27,6 @@ pub struct Webview<'a, Message> {
     on_navigate: fn(Url) -> bool,
     on_load: Option<Box<dyn Fn(Load) -> Message + 'a>>,
     id: Option<widget::Id>,
-    user_agent: Option<String>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -62,9 +61,11 @@ pub mod header {
     pub use wry::http::HeaderName as Name;
     pub use wry::http::HeaderValue as Value;
 
+    pub use wry::http::header::COOKIE;
     pub use wry::http::header::ORIGIN;
     pub use wry::http::header::REFERER;
     pub use wry::http::header::REFERRER_POLICY;
+    pub use wry::http::header::USER_AGENT;
 }
 
 impl<'a, Message> Webview<'a, Message> {
@@ -77,7 +78,6 @@ impl<'a, Message> Webview<'a, Message> {
             on_navigate: |_| true,
             on_load: None,
             id: None,
-            user_agent: None,
         }
     }
 
@@ -101,11 +101,6 @@ impl<'a, Message> Webview<'a, Message> {
         self
     }
 
-    pub fn user_agent(mut self, user_agent: impl Into<String>) -> Self {
-        self.user_agent = Some(user_agent.into());
-        self
-    }
-
     pub fn on_navigate(mut self, on_navigate: fn(Url) -> bool) -> Self {
         self.on_navigate = on_navigate;
         self
@@ -124,7 +119,6 @@ enum State {
         webview: wry::WebView,
         source: Source<'static>,
         headers: header::Map,
-        user_agent: Option<String>,
         bounds: Rectangle,
         loads: Rc<RefCell<Vec<Load>>>,
         #[cfg(target_os = "macos")]
@@ -188,12 +182,8 @@ where
                     bounds,
                     source,
                     headers,
-                    user_agent,
                     ..
-                } if *source == self.source
-                    && headers == &self.headers
-                    && user_agent == &self.user_agent =>
-                {
+                } if *source == self.source && headers == &self.headers => {
                     let new_bounds = layout.bounds();
 
                     if *bounds != new_bounds {
@@ -245,7 +235,12 @@ where
                         });
                     }
 
-                    if let Some(user_agent) = &self.user_agent {
+                    if let Some(user_agent) = self
+                        .headers
+                        .get(header::USER_AGENT)
+                        .map(header::Value::to_str)
+                        .and_then(Result::ok)
+                    {
                         webview = webview.with_user_agent(user_agent);
                     }
 
@@ -268,7 +263,6 @@ where
                         webview,
                         source: self.source.to_static(),
                         headers: self.headers.clone(),
-                        user_agent: self.user_agent.clone(),
                         bounds,
                         loads,
                         #[cfg(target_os = "macos")]
