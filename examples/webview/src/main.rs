@@ -7,7 +7,10 @@ fn main() -> iced::Result {
 }
 
 #[derive(Default)]
-struct Example;
+struct Example {
+    headers: webview::header::Map,
+    cookies: webview::cookie::Jar,
+}
 
 #[derive(Debug, Clone)]
 enum Message {
@@ -37,6 +40,8 @@ impl Example {
             text("webview widget!").font(Font::MONOSPACE),
             webview("https://iced.rs")
                 .id("webview-example")
+                .headers(&self.headers)
+                .cookies(&self.cookies)
                 .on_navigate(is_trusted)
                 .on_load(Message::Loaded)
         ]

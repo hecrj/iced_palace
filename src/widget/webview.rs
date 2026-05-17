@@ -17,13 +17,15 @@ use std::cell::Cell;
 use std::cell::RefCell;
 use std::rc::Rc;
 
+pub use cookie::Cookie;
 pub use url::Url;
 
 pub struct Webview<'a, Message> {
     source: Source<'a>,
     width: Length,
     height: Length,
-    headers: header::Map,
+    headers: Cow<'a, header::Map>,
+    cookies: Cow<'a, [Cookie]>,
     on_navigate: fn(Url) -> bool,
     on_load: Option<Box<dyn Fn(Load) -> Message + 'a>>,
     id: Option<widget::Id>,
@@ -66,6 +68,55 @@ pub mod header {
     pub use wry::http::header::REFERER;
     pub use wry::http::header::REFERRER_POLICY;
     pub use wry::http::header::USER_AGENT;
+
+    use std::borrow::Cow;
+
+    pub trait IntoMap<'a> {
+        fn into(self) -> Cow<'a, Map>;
+    }
+
+    impl<'a> IntoMap<'a> for Map {
+        fn into(self) -> Cow<'a, Map> {
+            Cow::Owned(self)
+        }
+    }
+
+    impl<'a> IntoMap<'a> for &'a Map {
+        fn into(self) -> Cow<'a, Map> {
+            Cow::Borrowed(self)
+        }
+    }
+}
+
+pub mod cookie {
+    pub use wry::cookie::CookieBuilder as Builder;
+
+    pub type Cookie = wry::cookie::Cookie<'static>;
+    pub type Jar = Vec<Cookie>;
+
+    use std::borrow::Cow;
+
+    pub trait IntoJar<'a> {
+        fn into(self) -> Cow<'a, [Cookie]>;
+    }
+
+    impl<'a> IntoJar<'a> for Jar {
+        fn into(self) -> Cow<'a, [Cookie]> {
+            Cow::Owned(self)
+        }
+    }
+
+    impl<'a> IntoJar<'a> for &'a [Cookie] {
+        fn into(self) -> Cow<'a, [Cookie]> {
+            Cow::Borrowed(self)
+        }
+    }
+
+    impl<'a> IntoJar<'a> for &'a Jar {
+        fn into(self) -> Cow<'a, [Cookie]> {
+            Cow::Borrowed(self)
+        }
+    }
 }
 
 impl<'a, Message> Webview<'a, Message> {
@@ -74,7 +125,8 @@ impl<'a, Message> Webview<'a, Message> {
             source: source.into(),
             width: Length::Fill,
             height: Length::Fill,
-            headers: header::Map::default(),
+            headers: Cow::Owned(header::Map::default()),
+            cookies: Cow::Owned(cookie::Jar::default()),
             on_navigate: |_| true,
             on_load: None,
             id: None,
@@ -96,8 +148,13 @@ impl<'a, Message> Webview<'a, Message> {
         self
     }
 
-    pub fn headers(mut self, headers: impl Into<header::Map>) -> Self {
+    pub fn headers(mut self, headers: impl header::IntoMap<'a>) -> Self {
         self.headers = headers.into();
+        self
+    }
+
+    pub fn cookies(mut self, cookies: impl cookie::IntoJar<'a>) -> Self {
+        self.cookies = cookies.into();
         self
     }
 
@@ -119,6 +176,7 @@ enum State {
         webview: wry::WebView,
         source: Source<'static>,
         headers: header::Map,
+        cookies: cookie::Jar,
         bounds: Rectangle,
         loads: Rc<RefCell<Vec<Load>>>,
         #[cfg(target_os = "macos")]
@@ -182,8 +240,12 @@ where
                     bounds,
                     source,
                     headers,
+                    cookies,
                     ..
-                } if *source == self.source && headers == &self.headers => {
+                } if *source == self.source
+                    && headers == self.headers.as_ref()
+                    && cookies == self.cookies.as_ref() =>
+                {
                     let new_bounds = layout.bounds();
 
                     if *bounds != new_bounds {
@@ -198,7 +260,7 @@ where
                     let cursor = Rc::new(Cell::new(None));
 
                     let webview = wry::WebViewBuilder::new()
-                        .with_headers(self.headers.clone())
+                        .with_headers(self.headers.clone().into_owned())
                         .with_navigation_handler({
                             let on_navigate = self.on_navigate;
 
@@ -259,22 +321,15 @@ where
                         .build_as_child(&shell.window())
                         .expect("start webview");
 
-                    for cookie in self
-                        .headers
-                        .get_all(header::COOKIE)
-                        .iter()
-                        .flat_map(header::Value::to_str)
-                        .flat_map(|cookies| cookies.split(';'))
-                        .map(str::trim)
-                        .flat_map(wry::cookie::Cookie::parse)
-                    {
-                        let _ = webview.set_cookie(&cookie);
+                    for cookie in self.cookies.iter() {
+                        let _ = webview.set_cookie(cookie);
                     }
 
                     *state = State::Ready {
                         webview,
                         source: self.source.to_static(),
-                        headers: self.headers.clone(),
+                        headers: self.headers.clone().into_owned(),
+                        cookies: self.cookies.clone().into_owned(),
                         bounds,
                         loads,
                         #[cfg(target_os = "macos")]
