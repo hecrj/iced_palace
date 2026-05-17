@@ -259,6 +259,18 @@ where
                         .build_as_child(&shell.window())
                         .expect("start webview");
 
+                    for cookie in self
+                        .headers
+                        .get_all(header::COOKIE)
+                        .iter()
+                        .flat_map(header::Value::to_str)
+                        .flat_map(|cookies| cookies.split(';'))
+                        .map(str::trim)
+                        .flat_map(wry::cookie::Cookie::parse)
+                    {
+                        let _ = webview.set_cookie(&cookie);
+                    }
+
                     *state = State::Ready {
                         webview,
                         source: self.source.to_static(),
