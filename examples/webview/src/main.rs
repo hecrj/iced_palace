@@ -3,10 +3,9 @@ use iced::{Element, Font, Task};
 use iced_palace::widget::webview;
 
 fn main() -> iced::Result {
-    iced::run(Example::update, Example::view)
+    iced::application(Example::new, Example::update, Example::view).run()
 }
 
-#[derive(Default)]
 struct Example {
     headers: webview::header::Map,
     cookies: webview::cookie::Jar,
@@ -19,13 +18,24 @@ enum Message {
 }
 
 impl Example {
+    fn new() -> Self {
+        let cookie = webview::Cookie::build(("some-cookie", "some-value"))
+            .domain("iced.rs")
+            .path("/")
+            .build();
+
+        Self {
+            headers: webview::header::Map::new(),
+            cookies: vec![cookie],
+        }
+    }
+
     fn update(&mut self, message: Message) -> Task<Message> {
         match message {
             Message::Loaded(load) => {
                 dbg!(load);
 
-                webview::run("webview-example", "document.documentElement.outerHTML")
-                    .map(Message::Ran)
+                Task::batch([webview::run("webview-example", "document.cookie").map(Message::Ran)])
             }
             Message::Ran(result) => {
                 dbg!(result);

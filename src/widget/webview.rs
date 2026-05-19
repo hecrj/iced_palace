@@ -90,6 +90,7 @@ pub mod header {
 
 pub mod cookie {
     pub use wry::cookie::CookieBuilder as Builder;
+    pub use wry::cookie::SameSite;
 
     pub type Cookie = wry::cookie::Cookie<'static>;
     pub type Jar = Vec<Cookie>;
