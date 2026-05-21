@@ -260,7 +260,7 @@ where
                     #[cfg(target_os = "macos")]
                     let cursor = Rc::new(Cell::new(None));
 
-                    let webview = wry::WebViewBuilder::new()
+                    let mut webview = wry::WebViewBuilder::new()
                         .with_headers(self.headers.clone().into_owned())
                         .with_navigation_handler({
                             let on_navigate = self.on_navigate;
@@ -274,11 +274,6 @@ where
                             }
                         })
                         .with_bounds(into_rect(bounds));
-
-                    let mut webview = match &self.source {
-                        Source::Url(url) => webview.with_url(url.clone()),
-                        Source::Html(html) => webview.with_html(html.clone()),
-                    };
 
                     if self.on_load.is_some() {
                         let loads = loads.clone();
@@ -325,6 +320,11 @@ where
                     for cookie in self.cookies.iter() {
                         let _ = webview.set_cookie(cookie);
                     }
+
+                    let _ = match &self.source {
+                        Source::Url(url) => webview.load_url(url),
+                        Source::Html(html) => webview.load_html(html),
+                    };
 
                     *state = State::Ready {
                         webview,

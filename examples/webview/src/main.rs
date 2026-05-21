@@ -19,14 +19,19 @@ enum Message {
 
 impl Example {
     fn new() -> Self {
-        let cookie = webview::Cookie::build(("some-cookie", "some-value"))
+        let some_cookie = webview::Cookie::build(("some-cookie", "some-value"))
+            .domain("iced.rs")
+            .path("/")
+            .build();
+
+        let another_cookie = webview::Cookie::build(("another-cookie", "another-value"))
             .domain("iced.rs")
             .path("/")
             .build();
 
         Self {
             headers: webview::header::Map::new(),
-            cookies: vec![cookie],
+            cookies: vec![some_cookie, another_cookie],
         }
     }
 
