@@ -61,7 +61,12 @@ pub fn labeled_slider<'a, T, Message, Renderer>(
     to_string: impl Fn(&T) -> String,
 ) -> Element<'a, Message, core::Theme, Renderer>
 where
-    T: Copy + PartialOrd + Into<f64> + From<u8> + num_traits::FromPrimitive + 'static,
+    T: Copy
+        + PartialOrd
+        + From<u8>
+        + num_traits::FromPrimitive
+        + num_traits::AsPrimitive<f64>
+        + 'static,
     Message: Clone + 'a,
     Renderer: core::text::Renderer + 'a,
 {
