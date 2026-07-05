@@ -15,6 +15,7 @@ use std::borrow::Cow;
 use std::cell::Cell;
 
 use std::cell::RefCell;
+use std::path::PathBuf;
 use std::rc::Rc;
 
 pub use cookie::Cookie;
@@ -29,6 +30,7 @@ pub struct Webview<'a, Message> {
     on_navigate: fn(Url) -> bool,
     on_load: Option<Box<dyn Fn(Load) -> Message + 'a>>,
     id: Option<widget::Id>,
+    data_directory: Option<PathBuf>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -131,6 +133,7 @@ impl<'a, Message> Webview<'a, Message> {
             on_navigate: |_| true,
             on_load: None,
             id: None,
+            data_directory: None,
         }
     }
 
@@ -159,6 +162,11 @@ impl<'a, Message> Webview<'a, Message> {
         self
     }
 
+    pub fn data_directory(mut self, data_directory: impl Into<PathBuf>) -> Self {
+        self.data_directory = Some(data_directory.into());
+        self
+    }
+
     pub fn on_navigate(mut self, on_navigate: fn(Url) -> bool) -> Self {
         self.on_navigate = on_navigate;
         self
@@ -178,6 +186,7 @@ enum State {
         source: Source<'static>,
         headers: header::Map,
         cookies: cookie::Jar,
+        data_directory: Option<PathBuf>,
         bounds: Rectangle,
         loads: Rc<RefCell<Vec<Load>>>,
         #[cfg(target_os = "macos")]
@@ -242,10 +251,12 @@ where
                     source,
                     headers,
                     cookies,
+                    data_directory,
                     ..
                 } if *source == self.source
                     && headers == self.headers.as_ref()
-                    && cookies == self.cookies.as_ref() =>
+                    && cookies == self.cookies.as_ref()
+                    && data_directory == &self.data_directory =>
                 {
                     let new_bounds = layout.bounds();
 
@@ -260,7 +271,8 @@ where
                     #[cfg(target_os = "macos")]
                     let cursor = Rc::new(Cell::new(None));
 
-                    let mut webview = wry::WebViewBuilder::new()
+                    let mut context = wry::WebContext::new(self.data_directory.clone());
+                    let mut webview = wry::WebViewBuilder::new_with_web_context(&mut context)
                         .with_headers(self.headers.clone().into_owned())
                         .with_navigation_handler({
                             let on_navigate = self.on_navigate;
@@ -331,6 +343,7 @@ where
                         source: self.source.to_static(),
                         headers: self.headers.clone().into_owned(),
                         cookies: self.cookies.clone().into_owned(),
+                        data_directory: self.data_directory.clone(),
                         bounds,
                         loads,
                         #[cfg(target_os = "macos")]
