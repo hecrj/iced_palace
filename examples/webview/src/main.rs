@@ -14,6 +14,7 @@ struct Example {
 #[derive(Debug, Clone)]
 enum Message {
     Loaded(webview::Load),
+    Errored(webview::Error),
     Ran(String),
 }
 
@@ -42,6 +43,11 @@ impl Example {
 
                 Task::batch([webview::run("webview-example", "document.cookie").map(Message::Ran)])
             }
+            Message::Errored(error) => {
+                dbg!(error);
+
+                Task::none()
+            }
             Message::Ran(result) => {
                 dbg!(result);
 
@@ -59,6 +65,7 @@ impl Example {
                 .cookies(&self.cookies)
                 .on_navigate(is_trusted)
                 .on_load(Message::Loaded)
+                .on_error(Message::Errored)
         ]
         .spacing(20)
         .padding(20)

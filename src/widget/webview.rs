@@ -10,6 +10,7 @@ use iced_runtime::futures::futures::channel::oneshot;
 use iced_runtime::task;
 
 use std::borrow::Cow;
+use std::sync::Arc;
 
 #[cfg(target_os = "macos")]
 use std::cell::Cell;
@@ -21,6 +22,8 @@ use std::rc::Rc;
 pub use cookie::Cookie;
 pub use url::Url;
 
+pub type Error = Arc<wry::Error>;
+
 pub struct Webview<'a, Message> {
     source: Source<'a>,
     width: Length,
@@ -29,6 +32,7 @@ pub struct Webview<'a, Message> {
     cookies: Cow<'a, [Cookie]>,
     on_navigate: fn(Url) -> bool,
     on_load: Option<Box<dyn Fn(Load) -> Message + 'a>>,
+    on_error: Option<Box<dyn Fn(Error) -> Message + 'a>>,
     id: Option<widget::Id>,
     data_directory: Option<PathBuf>,
 }
@@ -132,6 +136,7 @@ impl<'a, Message> Webview<'a, Message> {
             cookies: Cow::Owned(cookie::Jar::default()),
             on_navigate: |_| true,
             on_load: None,
+            on_error: None,
             id: None,
             data_directory: None,
         }
@@ -176,6 +181,11 @@ impl<'a, Message> Webview<'a, Message> {
         self.on_load = Some(Box::new(on_load));
         self
     }
+
+    pub fn on_error(mut self, on_error: impl Fn(Error) -> Message + 'a) -> Self {
+        self.on_error = Some(Box::new(on_error));
+        self
+    }
 }
 
 #[allow(clippy::large_enum_variant)]
@@ -194,6 +204,7 @@ enum State {
         #[cfg(target_os = "macos")]
         interaction: mouse::Interaction,
     },
+    Errored,
 }
 
 impl<'a, Message, Theme, Renderer> Widget<Message, Theme, Renderer> for Webview<'a, Message>
@@ -245,6 +256,9 @@ where
             let state = tree.state.downcast_mut::<State>();
 
             match state {
+                State::Errored => {
+                    // Do nothing
+                }
                 State::Ready {
                     webview,
                     bounds,
@@ -325,9 +339,17 @@ where
                             }
                         });
 
-                    let webview = webview
-                        .build_as_child(&shell.window())
-                        .expect("start webview");
+                    let webview = match webview.build_as_child(&shell.window()) {
+                        Ok(webview) => webview,
+                        Err(error) => {
+                            if let Some(on_error) = &self.on_error {
+                                shell.publish(on_error(Arc::new(error)));
+                            }
+
+                            *state = State::Errored;
+                            return;
+                        }
+                    };
 
                     for cookie in self.cookies.iter() {
                         let _ = webview.set_cookie(cookie);
