@@ -248,12 +248,13 @@ where
         event: &Event,
         layout: Layout<'_>,
         _cursor: mouse::Cursor,
-        _renderer: &Renderer,
+        renderer: &Renderer,
         shell: &mut Shell<'_, Message>,
         _viewport: &Rectangle,
     ) {
         if let Event::Window(window::Event::RedrawRequested(_)) = event {
             let state = tree.state.downcast_mut::<State>();
+            let scale = renderer.scale().unwrap_or_default();
 
             match state {
                 State::Errored => {
@@ -275,7 +276,9 @@ where
                     let new_bounds = layout.bounds();
 
                     if *bounds != new_bounds {
-                        let _ = webview.set_bounds(into_rect(new_bounds));
+                        let _ = webview.set_bounds(into_rect(new_bounds, scale.total()));
+                        let _ = webview.zoom(f64::from(scale.application));
+
                         *bounds = new_bounds;
                     }
                 }
@@ -299,7 +302,7 @@ where
                                 on_navigate(url)
                             }
                         })
-                        .with_bounds(into_rect(bounds));
+                        .with_bounds(into_rect(bounds, scale.total()));
 
                     if self.on_load.is_some() {
                         let loads = loads.clone();
@@ -354,6 +357,8 @@ where
                     for cookie in self.cookies.iter() {
                         let _ = webview.set_cookie(cookie);
                     }
+
+                    let _ = webview.zoom(f64::from(scale.application));
 
                     let _ = match &self.source {
                         Source::Url(url) => webview.load_url(url),
@@ -545,15 +550,15 @@ where
     }
 }
 
-fn into_rect(bounds: Rectangle) -> wry::Rect {
+fn into_rect(bounds: Rectangle, scale_factor: f32) -> wry::Rect {
     wry::Rect {
-        position: wry::dpi::Position::Logical(wry::dpi::LogicalPosition::new(
-            f64::from(bounds.x),
-            f64::from(bounds.y),
+        position: wry::dpi::Position::Physical(wry::dpi::PhysicalPosition::new(
+            (bounds.x * scale_factor) as i32,
+            (bounds.y * scale_factor) as i32,
         )),
-        size: wry::dpi::Size::Logical(wry::dpi::LogicalSize::new(
-            f64::from(bounds.width),
-            f64::from(bounds.height),
+        size: wry::dpi::Size::Physical(wry::dpi::PhysicalSize::new(
+            (bounds.width * scale_factor) as u32,
+            (bounds.height * scale_factor) as u32,
         )),
     }
 }

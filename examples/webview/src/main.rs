@@ -1,14 +1,19 @@
+use iced::keyboard;
 use iced::widget::{column, text};
-use iced::{Element, Font, Task};
+use iced::{Element, Font, Subscription, Task};
 use iced_palace::widget::webview;
 
 fn main() -> iced::Result {
-    iced::application(Example::new, Example::update, Example::view).run()
+    iced::application(Example::new, Example::update, Example::view)
+        .subscription(Example::subscription)
+        .scale_factor(Example::scale_factor)
+        .run()
 }
 
 struct Example {
     headers: webview::header::Map,
     cookies: webview::cookie::Jar,
+    scale_factor: f32,
 }
 
 #[derive(Debug, Clone)]
@@ -16,6 +21,7 @@ enum Message {
     Loaded(webview::Load),
     Errored(webview::Error),
     Ran(String),
+    Keyboard(keyboard::Event),
 }
 
 impl Example {
@@ -33,6 +39,7 @@ impl Example {
         Self {
             headers: webview::header::Map::new(),
             cookies: vec![some_cookie, another_cookie],
+            scale_factor: 1.0,
         }
     }
 
@@ -53,6 +60,25 @@ impl Example {
 
                 Task::none()
             }
+            Message::Keyboard(keyboard::Event::KeyPressed {
+                modified_key,
+                modifiers,
+                ..
+            }) => {
+                match modified_key.as_ref() {
+                    keyboard::Key::Character("=") if modifiers.command() => {
+                        self.scale_factor += 0.25;
+                    }
+                    keyboard::Key::Character("-") if modifiers.command() => {
+                        self.scale_factor -= 0.25;
+                        self.scale_factor = self.scale_factor.max(0.5);
+                    }
+                    _ => {}
+                }
+
+                Task::none()
+            }
+            Message::Keyboard(_) => Task::none(),
         }
     }
 
@@ -70,6 +96,14 @@ impl Example {
         .spacing(20)
         .padding(20)
         .into()
+    }
+
+    fn subscription(&self) -> Subscription<Message> {
+        keyboard::listen().map(Message::Keyboard)
+    }
+
+    fn scale_factor(&self) -> f32 {
+        self.scale_factor
     }
 }
 
