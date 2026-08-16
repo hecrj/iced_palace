@@ -109,20 +109,12 @@ impl<'a, T> Interface<'a, T> {
                 })
             }
 
-            fn children(&self) -> Vec<Tree> {
-                vec![Tree::new(&self.content)]
-            }
-
-            fn diff(&self, tree: &mut Tree) {
-                tree.diff_children(std::slice::from_ref(&self.content));
+            fn diff(&mut self, tree: &mut Tree) {
+                tree.diff_children(std::slice::from_mut(&mut self.content));
             }
 
             fn size(&self) -> Size<Length> {
                 self.content.as_widget().size()
-            }
-
-            fn size_hint(&self) -> Size<Length> {
-                self.content.as_widget().size_hint()
             }
 
             fn layout(
@@ -575,12 +567,8 @@ where
         })
     }
 
-    fn children(&self) -> Vec<Tree> {
-        self.nodes.iter().map(Tree::new).collect()
-    }
-
-    fn diff(&self, tree: &mut Tree) {
-        tree.diff_children(&self.nodes);
+    fn diff(&mut self, tree: &mut Tree) {
+        tree.diff_children(&mut self.nodes);
     }
 
     fn size(&self) -> Size<Length> {
@@ -599,7 +587,7 @@ where
             .zip(&mut tree.children)
             .zip(self.state.nodes.values())
             .map(|((node, tree), state)| {
-                let size = node.as_widget().size_hint();
+                let size = node.as_widget().size();
                 let bounds = state.bounds.get();
 
                 node.as_widget_mut()
@@ -791,7 +779,7 @@ where
                             let node = order.remove(order_index);
                             order.push(node);
 
-                            let size_hint = self.nodes[node_index].as_widget().size_hint();
+                            let size_hint = self.nodes[node_index].as_widget().size();
 
                             let Some(from) = cursor.position() else {
                                 return;
@@ -1054,7 +1042,7 @@ where
             }
 
             if let Some(position) = cursor.position_over(layout.bounds()) {
-                return Direction::detect(node.as_widget().size_hint(), layout.bounds(), position)
+                return Direction::detect(node.as_widget().size(), layout.bounds(), position)
                     .map(Direction::to_mouse_interaction)
                     .unwrap_or(interaction);
             }

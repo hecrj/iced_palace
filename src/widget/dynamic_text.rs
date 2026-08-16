@@ -29,6 +29,8 @@ where
     align_y: alignment::Vertical,
     font: Option<Renderer::Font>,
     shaping: text::Shaping,
+    wrapping: text::Wrapping,
+    ellipsis: text::Ellipsis,
     vectorial: bool,
     class: Theme::Class<'a>,
 }
@@ -48,7 +50,9 @@ where
             height: Length::Shrink,
             align_x: text::Alignment::Default,
             align_y: alignment::Vertical::Top,
-            shaping: text::Shaping::Basic,
+            shaping: text::Shaping::default(),
+            wrapping: text::Wrapping::default(),
+            ellipsis: text::Ellipsis::default(),
             vectorial: false,
             class: Theme::default(),
         }
@@ -95,6 +99,16 @@ where
 
     pub fn shaping(mut self, shaping: text::Shaping) -> Self {
         self.shaping = shaping;
+        self
+    }
+
+    pub fn wrapping(mut self, wrapping: text::Wrapping) -> Self {
+        self.wrapping = wrapping;
+        self
+    }
+
+    pub fn ellipsis(mut self, ellipsis: text::Ellipsis) -> Self {
+        self.ellipsis = ellipsis;
         self
     }
 
@@ -184,6 +198,7 @@ where
                 align_x: self.align_x,
                 align_y: self.align_y,
                 shaping: self.shaping,
+                ellipsis: self.ellipsis,
                 wrapping: text::Wrapping::default(),
                 hint_factor: None,
             });
@@ -240,6 +255,8 @@ where
                 align_x: self.align_x,
                 align_y: self.align_y,
                 shaping: self.shaping,
+                wrapping: self.wrapping,
+                ellipsis: self.ellipsis,
             }
             .draw_with(|glyph, color| {
                 frame.fill(&glyph, color);

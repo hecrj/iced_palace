@@ -103,7 +103,7 @@ impl Example {
             };
 
             let content: Element<'_, _> = match node {
-                Instruction::Number { n, .. } => text_input("Type a number", &n.to_string())
+                Instruction::Number { n, .. } => text_input("Type a number", n.to_string())
                     .on_input(Message::NumberChanged.with(id))
                     .into(),
                 Instruction::Add { a, b, .. } => text!(

@@ -1,4 +1,3 @@
-mod ellipsized_text;
 mod typewriter;
 
 #[cfg(feature = "rand")]
@@ -10,7 +9,6 @@ mod dynamic_text;
 #[cfg(feature = "node-editor")]
 pub mod node_editor;
 
-pub use ellipsized_text::EllipsizedText;
 pub use typewriter::Typewriter;
 
 #[cfg(feature = "rand")]
@@ -37,16 +35,6 @@ where
     Renderer: core::text::Renderer,
 {
     Typewriter::new(fragment)
-}
-
-pub fn ellipsized_text<'a, Theme, Renderer>(
-    fragment: impl core::text::IntoFragment<'a>,
-) -> EllipsizedText<'a, Theme, Renderer>
-where
-    Theme: core::widget::text::Catalog,
-    Renderer: core::text::Renderer,
-{
-    EllipsizedText::new(fragment)
 }
 
 #[cfg(feature = "rand")]
@@ -79,7 +67,12 @@ pub fn labeled_slider<'a, T, Message, Renderer>(
     to_string: impl Fn(&T) -> String,
 ) -> Element<'a, Message, core::Theme, Renderer>
 where
-    T: Copy + PartialOrd + Into<f64> + From<u8> + num_traits::FromPrimitive + 'static,
+    T: Copy
+        + PartialOrd
+        + From<u8>
+        + num_traits::FromPrimitive
+        + num_traits::AsPrimitive<f64>
+        + 'static,
     Message: Clone + 'a,
     Renderer: core::text::Renderer + 'a,
 {
@@ -90,7 +83,7 @@ where
                 .width(Length::Fill)
                 .height(24)
                 .style(|theme: &core::Theme, status| {
-                    let palette = theme.extended_palette();
+                    let palette = theme.palette();
 
                     slider::Style {
                         rail: slider::Rail {
@@ -117,12 +110,12 @@ where
                 })
         )
         .style(|theme| container::Style::default()
-            .background(theme.extended_palette().background.weak.color)
+            .background(theme.palette().background.weak.color)
             .border(border::rounded(2))),
         row![
             text(label).size(14).style(|theme: &core::Theme| {
                 text::Style {
-                    color: Some(theme.extended_palette().background.weak.text),
+                    color: Some(theme.palette().background.weak.text),
                 }
             }),
             space::horizontal(),
