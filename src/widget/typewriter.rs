@@ -10,25 +10,23 @@ use crate::core::widget::text::Format;
 use crate::core::widget::tree::{self, Tree};
 use crate::core::window;
 use crate::core::{
-    Alignment, Color, Element, Event, Length, Pixels, Rectangle, Shell, Size, Widget,
+    Alignment, Color, Element, Event, Font, Length, Pixels, Rectangle, Shell, Size, Widget,
 };
 
 #[derive(Debug)]
-pub struct Typewriter<'a, Theme, Renderer>
+pub struct Typewriter<'a, Theme>
 where
     Theme: widget::text::Catalog,
-    Renderer: text::Renderer,
 {
     fragment: Fragment<'a>,
-    format: Format<Renderer::Font>,
+    format: Format,
     class: Theme::Class<'a>,
     speed: Duration,
 }
 
-impl<'a, Theme, Renderer> Typewriter<'a, Theme, Renderer>
+impl<'a, Theme> Typewriter<'a, Theme>
 where
     Theme: widget::text::Catalog,
-    Renderer: text::Renderer,
 {
     pub fn new(fragment: impl core::text::IntoFragment<'a>) -> Self {
         Self {
@@ -45,11 +43,11 @@ where
     }
 
     pub fn line_height(mut self, line_height: impl Into<text::LineHeight>) -> Self {
-        self.format.line_height = line_height.into();
+        self.format.line_height = Some(line_height.into());
         self
     }
 
-    pub fn font(mut self, font: impl Into<Renderer::Font>) -> Self {
+    pub fn font(mut self, font: impl Into<Font>) -> Self {
         self.format.font = Some(font.into());
         self
     }
@@ -146,7 +144,7 @@ enum Animation<P: text::Paragraph> {
     Done,
 }
 
-impl<Message, Theme, Renderer> Widget<Message, Theme, Renderer> for Typewriter<'_, Theme, Renderer>
+impl<Message, Theme, Renderer> Widget<Message, Theme, Renderer> for Typewriter<'_, Theme>
 where
     Theme: widget::text::Catalog,
     Renderer: text::Renderer,
@@ -289,14 +287,14 @@ where
     }
 }
 
-impl<'a, Message, Theme, Renderer> From<Typewriter<'a, Theme, Renderer>>
+impl<'a, Message, Theme, Renderer> From<Typewriter<'a, Theme>>
     for Element<'a, Message, Theme, Renderer>
 where
     Theme: widget::text::Catalog + 'a,
     Renderer: text::Renderer + 'a,
     Renderer::Paragraph: Clone,
 {
-    fn from(text: Typewriter<'a, Theme, Renderer>) -> Element<'a, Message, Theme, Renderer> {
+    fn from(text: Typewriter<'a, Theme>) -> Element<'a, Message, Theme, Renderer> {
         Element::new(text)
     }
 }

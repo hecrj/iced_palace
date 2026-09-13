@@ -15,10 +15,9 @@ use iced_widget::canvas;
 use iced_widget::graphics::geometry;
 
 #[derive(Debug)]
-pub struct DynamicText<'a, Theme, Renderer>
+pub struct DynamicText<'a, Theme>
 where
     Theme: widget::text::Catalog,
-    Renderer: text::Renderer,
 {
     fragment: core::text::Fragment<'a>,
     size: Option<Pixels>,
@@ -27,7 +26,7 @@ where
     height: Length,
     align_x: text::Alignment,
     align_y: alignment::Vertical,
-    font: Option<Renderer::Font>,
+    font: Option<Font>,
     shaping: text::Shaping,
     wrapping: text::Wrapping,
     ellipsis: text::Ellipsis,
@@ -35,10 +34,9 @@ where
     class: Theme::Class<'a>,
 }
 
-impl<'a, Theme, Renderer> DynamicText<'a, Theme, Renderer>
+impl<'a, Theme> DynamicText<'a, Theme>
 where
     Theme: widget::text::Catalog,
-    Renderer: text::Renderer + geometry::Renderer,
 {
     pub fn new(fragment: impl core::text::IntoFragment<'a>) -> Self {
         Self {
@@ -68,7 +66,7 @@ where
         self
     }
 
-    pub fn font(mut self, font: impl Into<Renderer::Font>) -> Self {
+    pub fn font(mut self, font: impl Into<Font>) -> Self {
         self.font = Some(font.into());
         self
     }
@@ -152,10 +150,10 @@ where
     geometry: canvas::Cache<Renderer>,
 }
 
-impl<Message, Theme, Renderer> Widget<Message, Theme, Renderer> for DynamicText<'_, Theme, Renderer>
+impl<Message, Theme, Renderer> Widget<Message, Theme, Renderer> for DynamicText<'_, Theme>
 where
     Theme: widget::text::Catalog,
-    Renderer: text::Renderer<Font = Font> + geometry::Renderer + 'static,
+    Renderer: text::Renderer + geometry::Renderer + 'static,
 {
     fn tag(&self) -> tree::Tag {
         tree::Tag::of::<State<Renderer>>()
@@ -186,11 +184,11 @@ where
         layout::sized(limits, self.width, self.height, |limits| {
             let bounds = limits.max();
 
-            let size = self.size.unwrap_or_else(|| renderer.default_size());
-            let font = self.font.unwrap_or_else(|| renderer.default_font());
+            let size = self.size.unwrap_or_else(|| renderer.text_size());
+            let font = self.font.unwrap_or_else(|| renderer.font());
 
             let changed = state.text.update(text::Text {
-                content: &self.fragment,
+                content: self.fragment.as_ref(),
                 bounds,
                 size,
                 line_height: self.line_height,
@@ -249,9 +247,9 @@ where
                 position: text_position,
                 max_width: text_bounds.width,
                 color: style.color.unwrap_or(defaults.text_color),
-                size: self.size.unwrap_or(renderer.default_size()),
+                size: self.size.unwrap_or(renderer.text_size()),
                 line_height: self.line_height,
-                font: self.font.unwrap_or(renderer.default_font()),
+                font: self.font.unwrap_or(renderer.font()),
                 align_x: self.align_x,
                 align_y: self.align_y,
                 shaping: self.shaping,
@@ -284,13 +282,13 @@ where
     }
 }
 
-impl<'a, Message, Theme, Renderer> From<DynamicText<'a, Theme, Renderer>>
+impl<'a, Message, Theme, Renderer> From<DynamicText<'a, Theme>>
     for Element<'a, Message, Theme, Renderer>
 where
     Theme: widget::text::Catalog + 'a,
-    Renderer: text::Renderer<Font = Font> + geometry::Renderer + 'static,
+    Renderer: text::Renderer + geometry::Renderer + 'static,
 {
-    fn from(text: DynamicText<'a, Theme, Renderer>) -> Element<'a, Message, Theme, Renderer> {
+    fn from(text: DynamicText<'a, Theme>) -> Element<'a, Message, Theme, Renderer> {
         Element::new(text)
     }
 }
