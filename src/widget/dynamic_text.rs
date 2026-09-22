@@ -173,16 +173,11 @@ where
         }
     }
 
-    fn layout(
-        &mut self,
-        tree: &mut Tree,
-        renderer: &Renderer,
-        limits: &layout::Limits,
-    ) -> layout::Node {
+    fn layout(&mut self, tree: &mut Tree, renderer: &Renderer, limits: &layout::Limits) {
         let state = &mut tree.state.downcast_mut::<State<Renderer>>();
 
-        layout::sized(limits, self.width, self.height, |limits| {
-            let bounds = limits.max();
+        tree.size = layout::sized(limits, self.width, self.height, |limits| {
+            let bounds = limits.bounds();
 
             let size = self.size.unwrap_or_else(|| renderer.text_size());
             let font = self.font.unwrap_or_else(|| renderer.font());
@@ -206,7 +201,7 @@ where
             }
 
             state.text.min_bounds()
-        })
+        });
     }
 
     fn draw(
@@ -215,7 +210,7 @@ where
         renderer: &mut Renderer,
         theme: &Theme,
         defaults: &renderer::Style,
-        layout: Layout<'_>,
+        layout: Layout,
         _cursor_position: mouse::Cursor,
         viewport: &Rectangle,
     ) {

@@ -181,12 +181,7 @@ where
         }
     }
 
-    fn layout(
-        &mut self,
-        tree: &mut Tree,
-        renderer: &Renderer,
-        limits: &layout::Limits,
-    ) -> layout::Node {
+    fn layout(&mut self, tree: &mut Tree, renderer: &Renderer, limits: &layout::Limits) {
         let state = &mut tree.state.downcast_mut::<State<Renderer::Paragraph>>();
 
         if state.content != self.fragment {
@@ -204,7 +199,8 @@ where
             Animation::Done => self.fragment.as_ref(),
         };
 
-        widget::text::layout(&mut state.internal, renderer, limits, fragment, self.format)
+        tree.size =
+            widget::text::layout(&mut state.internal, renderer, limits, fragment, self.format);
     }
 
     fn draw(
@@ -213,7 +209,7 @@ where
         renderer: &mut Renderer,
         theme: &Theme,
         defaults: &renderer::Style,
-        layout: Layout<'_>,
+        layout: Layout,
         _cursor_position: mouse::Cursor,
         viewport: &Rectangle,
     ) {
@@ -234,7 +230,7 @@ where
         &mut self,
         tree: &mut Tree,
         event: &Event,
-        layout: Layout<'_>,
+        layout: Layout,
         _cursor: mouse::Cursor,
         _renderer: &Renderer,
         shell: &mut Shell<'_, Message>,
