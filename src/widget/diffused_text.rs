@@ -10,26 +10,24 @@ use crate::core::widget::text::{Catalog, Format, Style, StyleFn};
 use crate::core::widget::tree::{self, Tree};
 use crate::core::window;
 use crate::core::{
-    Alignment, Color, Element, Event, Length, Pixels, Rectangle, Shell, Size, Widget,
+    Alignment, Color, Element, Event, Font, Length, Pixels, Rectangle, Shell, Size, Widget,
 };
 
 #[derive(Debug)]
-pub struct DiffusedText<'a, Theme, Renderer>
+pub struct DiffusedText<'a, Theme>
 where
     Theme: Catalog,
-    Renderer: text::Renderer,
 {
     fragment: core::text::Fragment<'a>,
-    format: Format<Renderer::Font>,
+    format: Format,
     class: Theme::Class<'a>,
     duration: Duration,
     tick_rate: u64,
 }
 
-impl<'a, Theme, Renderer> DiffusedText<'a, Theme, Renderer>
+impl<'a, Theme> DiffusedText<'a, Theme>
 where
     Theme: Catalog,
-    Renderer: text::Renderer,
 {
     pub fn new(fragment: impl core::text::IntoFragment<'a>) -> Self {
         Self {
@@ -47,11 +45,11 @@ where
     }
 
     pub fn line_height(mut self, line_height: impl Into<text::LineHeight>) -> Self {
-        self.format.line_height = line_height.into();
+        self.format.line_height = Some(line_height.into());
         self
     }
 
-    pub fn font(mut self, font: impl Into<Renderer::Font>) -> Self {
+    pub fn font(mut self, font: impl Into<Font>) -> Self {
         self.format.font = Some(font.into());
         self
     }
@@ -155,8 +153,7 @@ enum Animation {
     Done,
 }
 
-impl<Message, Theme, Renderer> Widget<Message, Theme, Renderer>
-    for DiffusedText<'_, Theme, Renderer>
+impl<Message, Theme, Renderer> Widget<Message, Theme, Renderer> for DiffusedText<'_, Theme>
 where
     Theme: widget::text::Catalog,
     Renderer: text::Renderer,
@@ -184,12 +181,7 @@ where
         }
     }
 
-    fn layout(
-        &mut self,
-        tree: &mut Tree,
-        renderer: &Renderer,
-        limits: &layout::Limits,
-    ) -> layout::Node {
+    fn layout(&mut self, tree: &mut Tree, renderer: &Renderer, limits: &layout::Limits) {
         let state = &mut tree.state.downcast_mut::<State<Renderer::Paragraph>>();
 
         if state.content != self.fragment {
@@ -207,7 +199,8 @@ where
             Animation::Done => self.fragment.as_ref(),
         };
 
-        widget::text::layout(&mut state.internal, renderer, limits, fragment, self.format)
+        tree.size =
+            widget::text::layout(&mut state.internal, renderer, limits, fragment, self.format);
     }
 
     fn draw(
@@ -216,7 +209,7 @@ where
         renderer: &mut Renderer,
         theme: &Theme,
         defaults: &renderer::Style,
-        layout: Layout<'_>,
+        layout: Layout,
         _cursor_position: mouse::Cursor,
         viewport: &Rectangle,
     ) {
@@ -237,7 +230,7 @@ where
         &mut self,
         tree: &mut Tree,
         event: &Event,
-        layout: Layout<'_>,
+        layout: Layout,
         _cursor: mouse::Cursor,
         _renderer: &Renderer,
         shell: &mut Shell<'_, Message>,
@@ -300,13 +293,13 @@ where
     }
 }
 
-impl<'a, Message, Theme, Renderer> From<DiffusedText<'a, Theme, Renderer>>
+impl<'a, Message, Theme, Renderer> From<DiffusedText<'a, Theme>>
     for Element<'a, Message, Theme, Renderer>
 where
     Theme: widget::text::Catalog + 'a,
     Renderer: text::Renderer + 'a,
 {
-    fn from(text: DiffusedText<'a, Theme, Renderer>) -> Element<'a, Message, Theme, Renderer> {
+    fn from(text: DiffusedText<'a, Theme>) -> Element<'a, Message, Theme, Renderer> {
         Element::new(text)
     }
 }
