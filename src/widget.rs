@@ -16,8 +16,8 @@ pub use dynamic_text::DynamicText;
 
 use crate::core;
 use crate::core::border;
-use crate::core::{Alignment, Color, Element, Length};
-use iced_widget::{container, row, slider, space, stack, text};
+use crate::core::{Alignment, Color, Length};
+use iced_widget::{Widget, container, row, slider, space, stack, text};
 
 use std::ops::RangeInclusive;
 
@@ -54,7 +54,7 @@ pub fn labeled_slider<'a, T, Message, Renderer>(
     current: T,
     on_change: impl Fn(T) -> Message + 'a,
     to_string: impl Fn(&T) -> String,
-) -> Element<'a, Message, core::Theme, Renderer>
+) -> impl Widget<Message, core::Theme, Renderer> + 'a
 where
     T: Copy
         + PartialOrd
@@ -98,7 +98,7 @@ where
                     }
                 })
         )
-        .style(|theme| container::Style::default()
+        .style(|theme: &core::Theme| container::Style::default()
             .background(theme.palette().background.weak.color)
             .border(border::rounded(2))),
         row![
@@ -114,5 +114,4 @@ where
         .height(Length::Fill)
         .align_y(Alignment::Center),
     ]
-    .into()
 }

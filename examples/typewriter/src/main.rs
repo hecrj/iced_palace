@@ -1,5 +1,5 @@
 use iced::widget::{center, center_x, column, container, toggler};
-use iced::{Element, Font};
+use iced::{Font, Widget};
 use iced_palace::widget::typewriter;
 
 fn main() -> iced::Result {
@@ -30,7 +30,7 @@ impl Example {
         }
     }
 
-    fn view(&self) -> Element<'_, Message> {
+    fn view(&self) -> impl Widget<Message> {
         const JOI: &str = "Mere data makes a man.\n\
         A and C and T and G.\n\
         The alphabet of you.\n\
@@ -58,6 +58,5 @@ impl Example {
                 .style(container::dark),
         ]
         .spacing(10)
-        .into()
     }
 }

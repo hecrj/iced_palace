@@ -1,6 +1,6 @@
 use iced::time::milliseconds;
 use iced::widget::{center, column};
-use iced::{Center, Element, Font};
+use iced::{Center, Font, Widget};
 
 use iced_palace::widget::diffused_text;
 
@@ -20,7 +20,7 @@ impl Example {
         match message {}
     }
 
-    fn view(&self) -> Element<'_, Message> {
+    fn view(&self) -> impl Widget<Message> {
         center(
             column![
                 diffused_text("Diffused Text")
@@ -35,7 +35,6 @@ impl Example {
             .align_x(Center)
             .spacing(20),
         )
-        .into()
     }
 }
 

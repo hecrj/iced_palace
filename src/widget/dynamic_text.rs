@@ -7,9 +7,7 @@ use crate::core::text;
 use crate::core::text::paragraph;
 use crate::core::widget;
 use crate::core::widget::tree::{self, Tree};
-use crate::core::{
-    Alignment, Color, Element, Font, Length, Pixels, Point, Rectangle, Size, Widget,
-};
+use crate::core::{Alignment, Color, Font, Length, Pixels, Point, Rectangle, Size, Widget};
 
 use iced_widget::canvas;
 use iced_widget::graphics::geometry;
@@ -150,6 +148,8 @@ where
     geometry: canvas::Cache<Renderer>,
 }
 
+impl<Theme> widget::Meta for DynamicText<'_, Theme> where Theme: widget::text::Catalog {}
+
 impl<Message, Theme, Renderer> Widget<Message, Theme, Renderer> for DynamicText<'_, Theme>
 where
     Theme: widget::text::Catalog,
@@ -274,16 +274,5 @@ where
                 *viewport,
             );
         }
-    }
-}
-
-impl<'a, Message, Theme, Renderer> From<DynamicText<'a, Theme>>
-    for Element<'a, Message, Theme, Renderer>
-where
-    Theme: widget::text::Catalog + 'a,
-    Renderer: text::Renderer + geometry::Renderer + 'static,
-{
-    fn from(text: DynamicText<'a, Theme>) -> Element<'a, Message, Theme, Renderer> {
-        Element::new(text)
     }
 }

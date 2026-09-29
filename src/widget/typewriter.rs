@@ -9,9 +9,7 @@ use crate::core::widget;
 use crate::core::widget::text::Format;
 use crate::core::widget::tree::{self, Tree};
 use crate::core::window;
-use crate::core::{
-    Alignment, Color, Element, Event, Font, Length, Pixels, Rectangle, Shell, Size, Widget,
-};
+use crate::core::{Alignment, Color, Event, Font, Length, Pixels, Rectangle, Shell, Size, Widget};
 
 #[derive(Debug)]
 pub struct Typewriter<'a, Theme>
@@ -143,6 +141,8 @@ enum Animation<P: text::Paragraph> {
     Ticking { text: P, start: Option<Instant> },
     Done,
 }
+
+impl<Theme> widget::Meta for Typewriter<'_, Theme> where Theme: widget::text::Catalog {}
 
 impl<Message, Theme, Renderer> Widget<Message, Theme, Renderer> for Typewriter<'_, Theme>
 where
@@ -277,17 +277,5 @@ where
                 Animation::Done => {}
             }
         }
-    }
-}
-
-impl<'a, Message, Theme, Renderer> From<Typewriter<'a, Theme>>
-    for Element<'a, Message, Theme, Renderer>
-where
-    Theme: widget::text::Catalog + 'a,
-    Renderer: text::Renderer + 'a,
-    Renderer::Paragraph: Clone,
-{
-    fn from(text: Typewriter<'a, Theme>) -> Element<'a, Message, Theme, Renderer> {
-        Element::new(text)
     }
 }

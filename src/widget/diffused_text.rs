@@ -9,9 +9,7 @@ use crate::core::widget;
 use crate::core::widget::text::{Catalog, Format, Style, StyleFn};
 use crate::core::widget::tree::{self, Tree};
 use crate::core::window;
-use crate::core::{
-    Alignment, Color, Element, Event, Font, Length, Pixels, Rectangle, Shell, Size, Widget,
-};
+use crate::core::{Alignment, Color, Event, Font, Length, Pixels, Rectangle, Shell, Size, Widget};
 
 #[derive(Debug)]
 pub struct DiffusedText<'a, Theme>
@@ -153,6 +151,8 @@ enum Animation {
     Done,
 }
 
+impl<Theme> widget::Meta for DiffusedText<'_, Theme> where Theme: widget::text::Catalog {}
+
 impl<Message, Theme, Renderer> Widget<Message, Theme, Renderer> for DiffusedText<'_, Theme>
 where
     Theme: widget::text::Catalog,
@@ -290,16 +290,5 @@ where
                 Animation::Done => {}
             }
         }
-    }
-}
-
-impl<'a, Message, Theme, Renderer> From<DiffusedText<'a, Theme>>
-    for Element<'a, Message, Theme, Renderer>
-where
-    Theme: widget::text::Catalog + 'a,
-    Renderer: text::Renderer + 'a,
-{
-    fn from(text: DiffusedText<'a, Theme>) -> Element<'a, Message, Theme, Renderer> {
-        Element::new(text)
     }
 }
