@@ -105,6 +105,7 @@ where
             text(label).size(14).style(|theme: &core::Theme| {
                 text::Style {
                     color: Some(theme.palette().background.weak.text),
+                    selection: None,
                 }
             }),
             space::horizontal(),

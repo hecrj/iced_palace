@@ -135,7 +135,10 @@ where
     {
         let color = color.map(Into::into);
 
-        self.style(move |_theme| widget::text::Style { color })
+        self.style(move |_theme| widget::text::Style {
+            color,
+            selection: None,
+        })
     }
 }
 

@@ -103,7 +103,10 @@ where
     {
         let color = color.map(Into::into);
 
-        self.style(move |_theme| Style { color })
+        self.style(move |_theme| Style {
+            color,
+            selection: None,
+        })
     }
 
     pub fn very_quick(self) -> Self {
@@ -137,7 +140,7 @@ where
 #[derive(Debug)]
 pub struct State<P: text::Paragraph> {
     content: String,
-    internal: widget::text::State<P>,
+    internal: text::paragraph::Plain<P>,
     animation: Animation,
 }
 
@@ -165,7 +168,7 @@ where
     fn state(&self) -> tree::State {
         tree::State::new(State {
             content: String::new(),
-            internal: widget::text::State::<Renderer::Paragraph>::default(),
+            internal: text::paragraph::Plain::<Renderer::Paragraph>::default(),
             animation: Animation::Ticking {
                 fragment: String::new(),
                 ticks: 0,
@@ -222,6 +225,7 @@ where
             layout.bounds(),
             state.internal.raw(),
             style,
+            theme.selection(),
             viewport,
         );
     }
