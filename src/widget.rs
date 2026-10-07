@@ -6,6 +6,9 @@ mod diffused_text;
 #[cfg(feature = "geometry")]
 mod dynamic_text;
 
+pub mod capsule;
+
+pub use capsule::capsule;
 pub use typewriter::Typewriter;
 
 #[cfg(feature = "rand")]
