@@ -1,6 +1,6 @@
 use iced::keyboard;
 use iced::widget::{center_x, column, container, row, toggler};
-use iced::{Element, Fill, Font, Subscription};
+use iced::{Fill, Font, Subscription, Widget};
 use iced_palace::widget::dynamic_text;
 
 fn main() -> iced::Result {
@@ -33,7 +33,7 @@ impl Example {
         }
     }
 
-    fn view(&self) -> Element<'_, Message> {
+    fn view(&self) -> impl Widget<Message> {
         const ROY: &str = "I've seen things you people wouldn't believe.\n\
         Attack ships on fire off the shoulder of Orion.\n\
         I watched C-beams glitter in the dark near the Tannhäuser Gate.\n\
@@ -66,7 +66,6 @@ impl Example {
                 .style(container::dark),
         ]
         .spacing(10)
-        .into()
     }
 
     fn subscription(&self) -> Subscription<Message> {

@@ -9,9 +9,7 @@ use crate::core::widget;
 use crate::core::widget::text::{Catalog, Format, Style, StyleFn};
 use crate::core::widget::tree::{self, Tree};
 use crate::core::window;
-use crate::core::{
-    Alignment, Color, Element, Event, Font, Length, Pixels, Rectangle, Shell, Size, Widget,
-};
+use crate::core::{Alignment, Color, Event, Font, Length, Pixels, Rectangle, Shell, Size, Widget};
 
 #[derive(Debug)]
 pub struct DiffusedText<'a, Theme>
@@ -105,7 +103,10 @@ where
     {
         let color = color.map(Into::into);
 
-        self.style(move |_theme| Style { color })
+        self.style(move |_theme| Style {
+            color,
+            selection: None,
+        })
     }
 
     pub fn very_quick(self) -> Self {
@@ -139,7 +140,7 @@ where
 #[derive(Debug)]
 pub struct State<P: text::Paragraph> {
     content: String,
-    internal: widget::text::State<P>,
+    internal: text::paragraph::Plain<P>,
     animation: Animation,
 }
 
@@ -153,6 +154,8 @@ enum Animation {
     Done,
 }
 
+impl<Theme> widget::Meta for DiffusedText<'_, Theme> where Theme: widget::text::Catalog {}
+
 impl<Message, Theme, Renderer> Widget<Message, Theme, Renderer> for DiffusedText<'_, Theme>
 where
     Theme: widget::text::Catalog,
@@ -165,7 +168,7 @@ where
     fn state(&self) -> tree::State {
         tree::State::new(State {
             content: String::new(),
-            internal: widget::text::State::<Renderer::Paragraph>::default(),
+            internal: text::paragraph::Plain::<Renderer::Paragraph>::default(),
             animation: Animation::Ticking {
                 fragment: String::new(),
                 ticks: 0,
@@ -222,6 +225,7 @@ where
             layout.bounds(),
             state.internal.raw(),
             style,
+            theme.selection(),
             viewport,
         );
     }
@@ -290,16 +294,5 @@ where
                 Animation::Done => {}
             }
         }
-    }
-}
-
-impl<'a, Message, Theme, Renderer> From<DiffusedText<'a, Theme>>
-    for Element<'a, Message, Theme, Renderer>
-where
-    Theme: widget::text::Catalog + 'a,
-    Renderer: text::Renderer + 'a,
-{
-    fn from(text: DiffusedText<'a, Theme>) -> Element<'a, Message, Theme, Renderer> {
-        Element::new(text)
     }
 }
