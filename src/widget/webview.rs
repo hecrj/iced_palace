@@ -3,7 +3,7 @@ use crate::core::mouse;
 use crate::core::renderer;
 use crate::core::widget;
 use crate::core::window;
-use crate::core::{Element, Event, Layout, Length, Rectangle, Shell, Size, Widget};
+use crate::core::{Event, Layout, Length, Rectangle, Shell, Size, Widget};
 
 use iced_runtime::Task;
 use iced_runtime::futures::futures::channel::oneshot;
@@ -206,6 +206,8 @@ enum State {
     },
     Errored,
 }
+
+impl<Message> widget::Meta for Webview<'_, Message> {}
 
 impl<'a, Message, Theme, Renderer> Widget<Message, Theme, Renderer> for Webview<'a, Message>
 where
@@ -532,17 +534,6 @@ pub fn run(target: impl Into<widget::Id>, javascript: impl Into<String>) -> Task
     });
 
     Task::batch([run, receive])
-}
-
-impl<'a, Message, Theme, Renderer> From<Webview<'a, Message>>
-    for Element<'a, Message, Theme, Renderer>
-where
-    Message: 'a,
-    Renderer: crate::core::Renderer,
-{
-    fn from(webview: Webview<'a, Message>) -> Self {
-        Element::new(webview)
-    }
 }
 
 fn into_rect(bounds: Rectangle, scale_factor: f32) -> wry::Rect {

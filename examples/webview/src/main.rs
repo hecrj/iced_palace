@@ -1,6 +1,6 @@
 use iced::keyboard;
 use iced::widget::{column, text};
-use iced::{Element, Font, Subscription, Task};
+use iced::{Font, Subscription, Task, Widget};
 use iced_palace::widget::webview;
 
 fn main() -> iced::Result {
@@ -82,7 +82,7 @@ impl Example {
         }
     }
 
-    fn view(&self) -> Element<'_, Message> {
+    fn view(&self) -> impl Widget<Message> {
         column![
             text("webview widget!").font(Font::MONOSPACE),
             webview("https://iced.rs")
@@ -95,7 +95,6 @@ impl Example {
         ]
         .spacing(20)
         .padding(20)
-        .into()
     }
 
     fn subscription(&self) -> Subscription<Message> {
