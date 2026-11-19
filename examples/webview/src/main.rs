@@ -1,7 +1,10 @@
 use iced::keyboard;
+use iced::keyboard::key::Named;
 use iced::widget::{column, text};
 use iced::{Element, Font, Subscription, Task};
 use iced_palace::widget::webview;
+
+use std::path::PathBuf;
 
 fn main() -> iced::Result {
     iced::application(Example::new, Example::update, Example::view)
@@ -13,6 +16,7 @@ fn main() -> iced::Result {
 struct Example {
     headers: webview::header::Map,
     cookies: webview::cookie::Jar,
+    data_directory: PathBuf,
     scale_factor: f32,
 }
 
@@ -39,6 +43,7 @@ impl Example {
         Self {
             headers: webview::header::Map::new(),
             cookies: vec![some_cookie, another_cookie],
+            data_directory: std::env::temp_dir().join("iced_palace_webview"),
             scale_factor: 1.0,
         }
     }
@@ -66,6 +71,12 @@ impl Example {
                 ..
             }) => {
                 match modified_key.as_ref() {
+                    keyboard::Key::Named(Named::Backspace)
+                        if modifiers.command() && modifiers.shift() =>
+                    {
+                        let _ = webview::clear_all_browsing_data(self.data_directory.clone())
+                            .inspect_err(|error| eprintln!("{error}"));
+                    }
                     keyboard::Key::Character("=") if modifiers.command() => {
                         self.scale_factor += 0.25;
                     }
@@ -89,6 +100,7 @@ impl Example {
                 .id("webview-example")
                 .headers(&self.headers)
                 .cookies(&self.cookies)
+                .data_directory(self.data_directory.clone())
                 .on_navigate(is_trusted)
                 .on_load(Message::Loaded)
                 .on_error(Message::Errored)

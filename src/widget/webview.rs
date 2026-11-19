@@ -167,6 +167,11 @@ impl<'a, Message> Webview<'a, Message> {
         self
     }
 
+    /// Sets the profile (data) directory of the webview.
+    ///
+    /// On Windows and Linux, this is also the directory that
+    /// [`clear_all_browsing_data`] deletes, so set it there if you intend to
+    /// use that function.
     pub fn data_directory(mut self, data_directory: impl Into<PathBuf>) -> Self {
         self.data_directory = Some(data_directory.into());
         self
@@ -537,6 +542,92 @@ pub fn run(target: impl Into<widget::Id>, javascript: impl Into<String>) -> Task
     });
 
     Task::batch([run, receive])
+}
+
+/// Clears all browsing data (cookies, caches, local storage, ...) of the
+/// profile stored at the given `data_directory`.
+///
+/// This does **not** require a live [`Webview`] in the widget tree: it
+/// operates on the profile's data directly, so it can be called from
+/// anywhere (e.g. a settings screen). Pass the same directory you configured
+/// with [`Webview::data_directory`].
+///
+/// ## Platform-specific:
+///
+/// - **Windows and Linux**: the data directory is deleted synchronously. The
+///   profile must be idle: while a webview is still using it, its browser
+///   process holds the profile files open (deletion then fails on Windows)
+///   and any data kept in memory would be written back to disk.
+/// - **macOS**: all webviews share the app-wide default WebKit data store
+///   (which is also why [`Webview::data_directory`] has no effect there), so
+///   the `data_directory` argument is ignored and that store is cleared
+///   instead. The work is dispatched to the main queue, so this function
+///   returns before the data is actually removed.
+///
+/// # Errors
+///
+/// On Windows and Linux, an error is returned when the data directory cannot
+/// be deleted — typically because a webview is still using the profile. A
+/// missing directory is not an error: the profile is already empty.
+pub fn clear_all_browsing_data(data_directory: PathBuf) -> Result<(), std::io::Error> {
+    #[cfg(target_os = "macos")]
+    {
+        use block2::RcBlock;
+        use objc2_foundation::{MainThreadMarker, NSDate};
+        use objc2_web_kit::WKWebsiteDataStore;
+
+        use std::ffi::c_void;
+
+        // The main queue of `libdispatch`, used to hop onto the main thread:
+        // iced tasks are not guaranteed to run on the main thread, while
+        // WebKit (and `wry`) require it.
+        //
+        // The `dispatch_*` symbols come from `libSystem`, which is linked by
+        // default on Apple platforms, so no `#[link]` attribute is needed.
+        unsafe extern "C" {
+            fn dispatch_get_main_queue() -> *mut c_void;
+            fn dispatch_async(queue: *mut c_void, block: *mut c_void);
+        }
+
+        let _ = data_directory;
+
+        let block = RcBlock::new(|| {
+            // Safety: blocks on the main queue run on the main thread, and
+            // the calls target the app-wide default data store. The block
+            // captures nothing, so moving it to the main thread is sound.
+            unsafe {
+                let mtm = MainThreadMarker::new()
+                    .expect("blocks on the main queue run on the main thread");
+                let store = WKWebsiteDataStore::defaultDataStore(mtm);
+                let data_types = WKWebsiteDataStore::allWebsiteDataTypes(mtm);
+                let since = NSDate::dateWithTimeIntervalSince1970(0.0);
+                let done = RcBlock::new(|| {});
+
+                store.removeDataOfTypes_modifiedSince_completionHandler(&data_types, &since, &done);
+            }
+        });
+
+        // Safety: `dispatch_async` retains the block for the main queue, so
+        // it remains valid past the drop of `block` below.
+        unsafe {
+            dispatch_async(
+                dispatch_get_main_queue(),
+                &*block as *const _ as *mut c_void,
+            );
+        }
+
+        Ok(())
+    }
+
+    #[cfg(not(target_os = "macos"))]
+    {
+        match std::fs::remove_dir_all(&data_directory) {
+            Ok(()) => Ok(()),
+            // No profile yet, so nothing to clear.
+            Err(error) if error.kind() == std::io::ErrorKind::NotFound => Ok(()),
+            Err(error) => Err(error),
+        }
+    }
 }
 
 impl<'a, Message, Theme, Renderer> From<Webview<'a, Message>>

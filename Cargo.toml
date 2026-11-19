@@ -12,7 +12,16 @@ keywords.workspace = true
 [features]
 geometry = ["iced_widget/canvas"]
 macros = ["iced_palace_macros"]
-webview = ["iced_runtime", "wry", "url"]
+webview = [
+    "iced_runtime",
+    "wry",
+    "url",
+    # Only used on macOS, where `clear_all_browsing_data` talks to WebKit
+    # directly instead of deleting the data directory.
+    "dep:block2",
+    "dep:objc2-foundation",
+    "dep:objc2-web-kit",
+]
 
 [dependencies]
 iced_core.workspace = true
@@ -34,6 +43,18 @@ url.optional = true
 
 wry.workspace = true
 wry.optional = true
+
+# Used by `clear_all_browsing_data` to clear the WebKit data store directly,
+# as macOS webviews all share it no matter the data directory.
+[target.'cfg(target_os = "macos")'.dependencies]
+block2.workspace = true
+block2.optional = true
+
+objc2-foundation.workspace = true
+objc2-foundation.optional = true
+
+objc2-web-kit.workspace = true
+objc2-web-kit.optional = true
 
 [workspace]
 members = [
@@ -60,7 +81,14 @@ iced_core = "0.15.0-dev"
 iced_runtime = "0.15.0-dev"
 iced_widget = "0.15.0-dev"
 
+block2 = "0.6"
 num-traits = "0.2"
+objc2-foundation = { version = "0.3", features = ["NSDate"] }
+objc2-web-kit = { version = "0.3", default-features = false, features = [
+    "std",
+    "block2",
+    "WKWebsiteDataStore",
+] }
 quote = "1"
 syn = "2"
 url = "2.5"
